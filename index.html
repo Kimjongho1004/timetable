@@ -98,6 +98,17 @@
         .class-checkbox-item:hover { background: rgba(255,255,255,0.1); }
         .class-checkbox-item input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--primary); cursor: pointer; flex-shrink: 0;}
 
+        /* 확장 검색 토글 스위치 영역 */
+        .extend-search-wrapper {
+            margin-top: 10px; margin-bottom: 15px; padding: 12px; border-radius: 8px; 
+            background: rgba(168, 85, 247, 0.1); border: 1px dashed rgba(168, 85, 247, 0.4);
+            display: none;
+        }
+        .extend-search-label {
+            display: flex; align-items: center; gap: 8px; font-size: 0.95rem; color: #c084fc; font-weight: 800; cursor: pointer;
+        }
+        .extend-search-label input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--purple); cursor: pointer; }
+
         /* 버튼류 */
         .btn { padding: 10px 16px; font-size: 0.9rem; font-weight: 800; color: white; background: var(--primary); border: none; border-radius: 6px; cursor: pointer; transition: all 0.2s; white-space: nowrap; }
         .btn:hover:not(:disabled) { background: var(--primary-hover); transform: translateY(-2px); box-shadow: 0 4px 10px rgba(56, 189, 248, 0.3); }
@@ -111,7 +122,7 @@
         .btn.secondary:hover:not(:disabled) { background: #334155; }
         .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
 
-        /* 대기 화면 */
+        /* 우측: 대기 화면 */
         .empty-state {
             display: flex; flex-direction: column; align-items: center; justify-content: center;
             height: 100%; min-height: 500px; background: rgba(30, 41, 59, 0.4); 
@@ -122,7 +133,7 @@
         .empty-state h3 { font-size: 1.5rem; color: white; margin-top: 0; margin-bottom: 12px; }
         .empty-state p { font-size: 1rem; line-height: 1.6; margin: 0; word-break: keep-all; }
 
-        /* 우측 영역 */
+        /* 우측: 결과 패널 */
         .right-content { display: none; flex-direction: column; gap: 20px; animation: fadeIn 0.4s ease; }
         @keyframes fadeIn { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
 
@@ -154,9 +165,13 @@
 
         .accordion-body {
             display: none; padding: 15px 20px; background: rgba(0,0,0,0.15);
-            border-top: 1px solid rgba(255,255,255,0.05);
+            max-height: 400px; overflow-y: auto; border-top: 1px solid rgba(255,255,255,0.05);
         }
         .accordion-item.active .accordion-body { display: block; animation: fadeIn 0.3s ease; }
+        /* 스크롤바 꾸미기 */
+        .accordion-body::-webkit-scrollbar { width: 8px; }
+        .accordion-body::-webkit-scrollbar-track { background: rgba(0,0,0,0.2); border-radius: 4px; }
+        .accordion-body::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 4px; }
 
         .candidate-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 10px; }
         .candidate-card {
@@ -257,6 +272,14 @@
                     <div id="dynamicCheckboxArea"></div>
                 </div>
 
+                <!-- 🔥 확장 검색 토글 -->
+                <div class="extend-search-wrapper" id="extendSearchWrapper">
+                    <label class="extend-search-label">
+                        <input type="checkbox" id="extendSearchCb"> 
+                        이번 학기 끝(2027.01.07)까지 확장 검색하기
+                    </label>
+                </div>
+
                 <button class="btn" id="searchBtn" style="width: 100%; padding: 16px; font-size: 1.15rem;" disabled onclick="findReplacements()">
                     대체 수업 추천받기 🔍
                 </button>
@@ -322,6 +345,7 @@
 
         let currentSelectedSwaps = {}; 
         let periodCandidatesMap = {}; 
+        const SEMESTER_END_DATE = new Date("2027-01-07"); // 학기 종료일 지정
 
         // 담임 선생님 명단
         const homeroomTeachers = ["조태일", "주원창", "배하영", "도병화", "여금복", "신동분", "오시우", "양담경", "안진희", "김종호", "김주리", "김옥희", "황영준", "최민성", "조향숙", "현경호", "신수원", "이푸름"];
@@ -344,17 +368,15 @@
         const resultWrapper = document.getElementById('resultWrapper');
         const accordionContainer = document.getElementById('accordionContainer');
         const resetBtn = document.getElementById('resetBtn');
+        const extendSearchWrapper = document.getElementById('extendSearchWrapper');
+        const extendSearchCb = document.getElementById('extendSearchCb');
 
         document.addEventListener('DOMContentLoaded', () => {
             addDateInput();
-            loadDefaultTimetable(); // 깃허브 배포 시 최우선 실행!
+            loadDefaultTimetable();
         });
 
-        // ==========================================
-        // 🌟 [추가] 기본 시간표(서버) 자동 로드 로직
-        // ==========================================
         function loadDefaultTimetable() {
-            // 서버(GitHub)에 같이 올려진 timetable.xlsx 를 가져옵니다.
             fetch('timetable.xlsx')
                 .then(response => {
                     if (!response.ok) throw new Error("서버 기본 파일(timetable.xlsx)을 찾을 수 없습니다.");
@@ -362,17 +384,12 @@
                 })
                 .then(data => {
                     const workbook = XLSX.read(new Uint8Array(data), { type: 'array' });
-                    parseSchoolExcel(workbook); // 데이터 파싱 및 세팅
-                    
-                    // UI 문구 덮어쓰기
+                    parseSchoolExcel(workbook); 
                     uploadLabel.innerText = `📁 기본 시간표 자동 로드 완료 (timetable.xlsx)`;
                     uploadLabel.classList.add('loaded');
                     resetBtn.style.display = 'block';
-                    console.log("기본 시간표를 성공적으로 로드했습니다.");
                 })
                 .catch(error => {
-                    // 서버에 파일이 없거나 로컬 파일로 열었을 경우 기존 로컬 스토리지 데이터 확인
-                    console.log("기본 시간표를 찾을 수 없어 로컬 저장소를 확인합니다.", error);
                     loadFromStorage();
                 });
         }
@@ -424,7 +441,7 @@
             if (savedData) {
                 try {
                     teacherSchedules = JSON.parse(savedData);
-                    uploadLabel.innerText = `📁 PC 저장 시간표 로드 완료`;
+                    uploadLabel.innerText = `📁 시간표 데이터 로드 완료`;
                     uploadLabel.classList.add('loaded');
                     resetBtn.style.display = 'block';
                     initDropdowns();
@@ -446,8 +463,7 @@
             reader.onload = function(evt) {
                 const data = new Uint8Array(evt.target.result);
                 const workbook = XLSX.read(data, { type: 'array' });
-                parseSchoolExcel(workbook);
-                // 수동 업로드 시 이름 표기
+                parseSchoolExcel(workbook, file.name);
                 uploadLabel.innerText = `📁 업로드 성공: ${file.name}`;
                 uploadLabel.classList.add('loaded');
                 resetBtn.style.display = 'block';
@@ -455,7 +471,6 @@
             reader.readAsArrayBuffer(file);
         });
 
-        // 엑셀 파싱 공통 함수 (fetch와 업로드 모두 사용)
         function parseSchoolExcel(workbook) {
             const sheet = workbook.Sheets[workbook.SheetNames[0]];
             const raw = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "" });
@@ -517,9 +532,7 @@
             if (clean === "" || clean === "-") return true;
 
             if (day === "월" && Number(period) === 1 && clean.includes("창체")) {
-                if (!homeroomTeachers.includes(teacherName)) {
-                    return true;
-                }
+                if (!homeroomTeachers.includes(teacherName)) return true;
             }
             return false;
         }
@@ -545,6 +558,7 @@
 
             if (!teacherName || validDates.length === 0) {
                 classCheckboxContainer.style.display = 'none';
+                extendSearchWrapper.style.display = 'none';
                 searchBtn.disabled = true;
                 return;
             }
@@ -587,23 +601,39 @@
 
             if (validDates.length > 0) {
                 classCheckboxContainer.style.display = 'block';
+                extendSearchWrapper.style.display = 'block'; // 확장 검색 토글 표시
                 searchBtn.disabled = !hasAnyClass;
             }
         }
 
-        function calculateFutureExactDate(baseDateStr, targetDay) {
+        // 🌟 [핵심] 여러 날짜를 반환하도록 함수 개편 (확장 검색 기능)
+        function calculateAllFutureDates(baseDateStr, targetDay, isExtended) {
             const baseDate = new Date(baseDateStr);
             let diffDays = dayToNum[targetDay] - baseDate.getDay();
             if (diffDays <= 0) diffDays += 7; 
 
-            const targetDate = new Date(baseDate);
-            targetDate.setDate(baseDate.getDate() + diffDays);
+            let results = [];
+            let currentTargetDate = new Date(baseDate);
+            currentTargetDate.setDate(baseDate.getDate() + diffDays);
+            let currentDiff = diffDays;
 
-            const y = targetDate.getFullYear();
-            const m = String(targetDate.getMonth() + 1).padStart(2, '0');
-            const d = String(targetDate.getDate()).padStart(2, '0');
+            while (currentTargetDate <= SEMESTER_END_DATE) {
+                const y = currentTargetDate.getFullYear();
+                const m = String(currentTargetDate.getMonth() + 1).padStart(2, '0');
+                const d = String(currentTargetDate.getDate()).padStart(2, '0');
+                
+                results.push({
+                    formatted: `${m}.${d}.`,
+                    diffDays: currentDiff,
+                    fullDateStr: `${y}-${m}-${d}`
+                });
 
-            return { formatted: `${m}.${d}.`, diffDays: diffDays, fullDateStr: `${y}-${m}-${d}` };
+                if (!isExtended) break; // 기본 모드면 1번만 찾고 끝
+
+                currentTargetDate.setDate(currentTargetDate.getDate() + 7);
+                currentDiff += 7;
+            }
+            return results;
         }
 
         function formatCurrentDate(dateStr) {
@@ -624,9 +654,6 @@
             return count;
         }
 
-        // ==========================================
-        // 🔍 메인 검색 (1순위 스마트 자동 분배)
-        // ==========================================
         function findReplacements() {
             document.getElementById('validationResultBox').style.display = 'none'; 
             currentSelectedSwaps = {}; 
@@ -634,6 +661,7 @@
 
             const absentName = teacherSelect.value;
             const absentTeacher = teacherSchedules.find(t => t.name === absentName);
+            const isExtended = extendSearchCb.checked; // 토글 확인
 
             const checkedBoxes = document.querySelectorAll('input[name="periodCheck"]:checked');
             if (checkedBoxes.length === 0) return alert("교체할 수업을 1개 이상 선택해주세요!");
@@ -660,13 +688,11 @@
             const absentTimeKeys = new Set(checkedAbsentList.map(c => c.id));
             accordionContainer.innerHTML = '';
             
-            // 모든 결강 교시에 대해 가능한 후보군을 모두 찾음
             checkedAbsentList.forEach(absentItem => {
-                const candidates = findCandidatesForMultiDay(absentTeacher, absentItem, absentTimeKeys, blockedDatesSet);
+                const candidates = findCandidatesForMultiDay(absentTeacher, absentItem, absentTimeKeys, blockedDatesSet, isExtended);
                 periodCandidatesMap[absentItem.id] = candidates;
             });
 
-            // 1순위 후보를 충돌 없이 스마트 배정
             let usedTargetSlots = new Set(); 
             let usedAbsentSlots = new Set(); 
 
@@ -709,7 +735,8 @@
             }
         }
 
-        function findCandidatesForMultiDay(absentTeacher, absentItem, absentTimeKeys, blockedDatesSet) {
+        // 🌟 여러 날짜 지원하는 탐색 함수
+        function findCandidatesForMultiDay(absentTeacher, absentItem, absentTimeKeys, blockedDatesSet, isExtended) {
             const { dateStr, day, period, subject } = absentItem;
             const targetKey = `${day}${period}`;
             
@@ -759,36 +786,40 @@
                                     const targetRoom = parseClassInfo(targetClass).room;
                                     if (absentRoom !== targetRoom) continue; 
 
-                                    const dateDetails = calculateFutureExactDate(dateStr, d);
-                                    const exactTargetDate = dateDetails.fullDateStr;
+                                    // 🔥 [수정] 조건에 따라 단일 날짜 혹은 학기말까지의 날짜 배열 생성
+                                    const dateDetailsList = calculateAllFutureDates(dateStr, d, isExtended);
+                                    
+                                    dateDetailsList.forEach(dateDetails => {
+                                        const exactTargetDate = dateDetails.fullDateStr;
 
-                                    if (blockedDatesSet.has(exactTargetDate)) continue; 
-                                    if (absentTimeKeys.has(`${exactTargetDate}_${p}`)) continue; 
+                                        if (blockedDatesSet.has(exactTargetDate)) return; 
+                                        if (absentTimeKeys.has(`${exactTargetDate}_${p}`)) return; 
 
-                                    const absentSlotKey = `${exactTargetDate}_${p}`;
-                                    const targetSlotKey = `${targetTeacher.name}_${exactTargetDate}_${p}`;
+                                        const absentSlotKey = `${exactTargetDate}_${p}`;
+                                        const targetSlotKey = `${targetTeacher.name}_${exactTargetDate}_${p}`;
 
-                                    const totalTargetClasses = countTeacherClassesOnExactDate(targetTeacher, dateStr) + 1;
-                                    const totalAbsentClasses = countTeacherClassesOnExactDate(absentTeacher, exactTargetDate) + 1;
+                                        const totalTargetClasses = countTeacherClassesOnExactDate(targetTeacher, dateStr) + 1;
+                                        const totalAbsentClasses = countTeacherClassesOnExactDate(absentTeacher, exactTargetDate) + 1;
 
-                                    candidates.push({
-                                        id: `cand_${absentItem.id}_${targetTeacher.name}_${exactTargetDate}_${p}`,
-                                        targetSlotKey: targetSlotKey,
-                                        absentSlotKey: absentSlotKey,
-                                        type: 'direct',
-                                        absentItem: absentItem, 
-                                        targetTeacherName: targetTeacher.name,
-                                        dept: targetTeacher.department,
-                                        swapDay: d,
-                                        swapPeriod: p,
-                                        swapDateFormatted: dateDetails.formatted,
-                                        exactTargetDate: exactTargetDate,
-                                        diffDays: dateDetails.diffDays,
-                                        swapSubject: targetClass,
-                                        totalTargetClasses: totalTargetClasses,
-                                        totalAbsentClasses: totalAbsentClasses,
-                                        isPE: targetClass.includes("체육"),
-                                        isChangche: false
+                                        candidates.push({
+                                            id: `cand_${absentItem.id}_${targetTeacher.name}_${exactTargetDate}_${p}`,
+                                            targetSlotKey: targetSlotKey,
+                                            absentSlotKey: absentSlotKey,
+                                            type: 'direct',
+                                            absentItem: absentItem, 
+                                            targetTeacherName: targetTeacher.name,
+                                            dept: targetTeacher.department,
+                                            swapDay: d,
+                                            swapPeriod: p,
+                                            swapDateFormatted: dateDetails.formatted,
+                                            exactTargetDate: exactTargetDate,
+                                            diffDays: dateDetails.diffDays,
+                                            swapSubject: targetClass,
+                                            totalTargetClasses: totalTargetClasses,
+                                            totalAbsentClasses: totalAbsentClasses,
+                                            isPE: targetClass.includes("체육"),
+                                            isChangche: false
+                                        });
                                     });
                                 }
                             }
@@ -843,12 +874,13 @@
                     let targetWorkload = c.isChangche ? `<span class="tag-special">고정 배정</span>` : getWorkloadBadge(c.totalTargetClasses, '상대');
                     let myWorkload = c.isChangche ? '' : getMyWorkloadBadge(c.totalAbsentClasses);
                     let peAlert = c.isPE ? `<span style="color:#fbbf24; font-size:0.8rem; margin-left:6px;">⚠️ 체육관 확인</span>` : '';
+                    let rankLabel = idx === 0 ? `<span class="tag-rank1" style="margin-right:4px;">최우선 추천</span>` : '';
 
                     html += `
                         <li class="candidate-card" id="card-${c.id}">
                             <div>
                                 <div class="t-name">
-                                    ${c.targetTeacherName} ${c.isChangche ? '' : `<span class="dept-tag dept-gen">${c.dept}</span>`}
+                                    ${rankLabel} ${c.targetTeacherName} ${c.isChangche ? '' : `<span class="dept-tag dept-gen">${c.dept}</span>`}
                                     ${targetWorkload} ${myWorkload}
                                 </div>
                                 <div class="t-tag">
@@ -1078,9 +1110,6 @@
             if (accordionItem) accordionItem.classList.remove('active'); 
         }
 
-        // ==========================================
-        // 🌟 서식 표 자동 생성
-        // ==========================================
         function generateUnifiedHWPPreview() {
             const keys = Object.keys(currentSelectedSwaps);
             if (keys.length === 0) return;
@@ -1128,9 +1157,6 @@
             });
         }
 
-        // ==========================================
-        // 🌟 최종 오류 검토 (Validation)
-        // ==========================================
         function runFinalValidation() {
             let errors = [];
             const checkedBoxes = document.querySelectorAll('input[name="periodCheck"]:checked');
