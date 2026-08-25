@@ -30,7 +30,7 @@
             min-height: 100vh; box-sizing: border-box; 
         }
 
-        /* 🔥 타이틀 크기 2배 확대 및 세련된 디자인 적용 */
+        /* 🔥 타이틀 크기 및 디자인 */
         .header { text-align: center; margin-bottom: 35px; width: 100%; max-width: 1400px; padding-top: 10px; }
         .header h1 { 
             font-size: 3.5rem; 
@@ -131,7 +131,7 @@
         .btn.secondary:hover:not(:disabled) { background: #334155; }
         .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
 
-        /* 대기 화면 */
+        /* 우측: 대기 화면 */
         .empty-state {
             display: flex; flex-direction: column; align-items: center; justify-content: center;
             height: 100%; min-height: 500px; background: rgba(30, 41, 59, 0.4); 
@@ -252,14 +252,14 @@
         .modal-table tr.highlight td { background: rgba(56, 189, 248, 0.1); font-weight: bold; color: var(--primary); }
         .modal-table tr:last-child td { border-bottom: none; }
         
-        /* 🔥 카피라이트 마크 */
+        /* 카피라이트 마크 */
         .copyright {
             position: fixed; bottom: 20px; right: 25px; color: var(--text-dim); font-size: 0.85rem; font-weight: 600;
             cursor: pointer; transition: color 0.2s; z-index: 1000;
         }
         .copyright:hover { color: var(--primary); }
 
-        /* 🔥 챗봇 플로팅 버튼 및 창 스타일 */
+        /* 챗봇 플로팅 버튼 및 창 스타일 */
         .chatbot-btn {
             position: fixed; bottom: 30px; left: 30px; 
             width: 65px; height: 65px; border-radius: 50%;
@@ -271,6 +271,28 @@
         }
         .chatbot-btn:hover { transform: scale(1.1); }
         
+        /* 🔥 챗봇 온보딩 말풍선 스타일 */
+        .chatbot-tooltip {
+            position: fixed; bottom: 105px; left: 30px;
+            background: rgba(30, 41, 59, 0.95); border: 1px solid var(--primary);
+            color: white; padding: 12px 18px; border-radius: 12px; font-size: 0.95rem;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5); z-index: 999;
+            cursor: pointer; opacity: 0; pointer-events: none;
+            animation: showTooltip 6s ease forwards; /* 6초 뒤 자동 숨김 */
+        }
+        .chatbot-tooltip::after {
+            content: ''; position: absolute; bottom: -6px; left: 22px;
+            width: 12px; height: 12px; background: rgba(30, 41, 59, 0.95);
+            border-right: 1px solid var(--primary); border-bottom: 1px solid var(--primary);
+            transform: rotate(45deg);
+        }
+        @keyframes showTooltip {
+            0% { opacity: 0; transform: translateY(10px); pointer-events: none; }
+            10% { opacity: 1; transform: translateY(0); pointer-events: auto; }
+            85% { opacity: 1; transform: translateY(0); pointer-events: auto; }
+            100% { opacity: 0; transform: translateY(10px); pointer-events: none; visibility: hidden; }
+        }
+
         .chatbot-window {
             position: fixed; bottom: 110px; left: 30px;
             width: 360px; height: 520px; background: var(--card-bg);
@@ -315,6 +337,7 @@
             .main-container { grid-template-columns: 1fr; }
             .empty-state { min-height: 300px; padding: 30px; }
             .chatbot-btn { left: 20px; bottom: 20px; width: 55px; height: 55px; }
+            .chatbot-tooltip { left: 20px; bottom: 85px; }
             .chatbot-window { left: 20px; bottom: 85px; width: 300px; }
         }
     </style>
@@ -336,6 +359,7 @@
                 </h2>
                 <div class="upload-area">
                     <div class="file-input-wrapper">
+                        <!-- 🔥 업로드 유도 문구 -->
                         <label for="excelUpload" class="file-input-btn" id="uploadLabel">
                             📁 교무부 원본 시간표 엑셀 업로드 (클릭)
                         </label>
@@ -436,6 +460,11 @@
     <!-- 🔥 카피라이트 마크 -->
     <div class="copyright" onclick="showDevPopup()">© Made By Kimjongho</div>
 
+    <!-- 🔥 챗봇 온보딩 말풍선 -->
+    <div class="chatbot-tooltip" id="chatbotTooltip" onclick="hideTooltip()">
+        👋 안녕하세요! 시간표 도우미 <strong>T-Bot</strong>입니다.
+    </div>
+
     <!-- 🔥 챗봇 플로팅 버튼 및 창 -->
     <button class="chatbot-btn" onclick="toggleChatbot()" title="시간표 질문하기">💬</button>
     
@@ -496,7 +525,7 @@
     <script>
         let teacherSchedules = []; 
         let schoolEvents = {}; 
-        let classSchedules = {}; // 🔥 엑셀의 학급별 탭 데이터를 담아둘 저장소
+        let classSchedules = {}; 
         let availableDays = ["월", "화", "수", "목", "금"];
         let dayToNum = { "월": 1, "화": 2, "수": 3, "목": 4, "금": 5 };
         let numToDay = { 1: "월", 2: "화", 3: "수", 4: "목", 5: "금", 6: "토", 0: "일" };
@@ -534,7 +563,15 @@
             loadFromStorage();  
         });
 
+        // 🔥 말풍선 즉시 숨김 함수
+        function hideTooltip() {
+            const tooltip = document.getElementById('chatbotTooltip');
+            if(tooltip) tooltip.style.display = 'none';
+        }
+
+        // 🔥 챗봇 UI 제어 (말풍선 숨김 포함)
         function toggleChatbot() {
+            hideTooltip(); // 챗봇 열면 말풍선 바로 숨기기
             const win = document.getElementById('chatbotWindow');
             if (win.style.display === 'none' || win.style.display === '') {
                 win.style.display = 'flex';
@@ -567,15 +604,13 @@
             }, 300); 
         }
 
-        // 🌟 [핵심] 초정밀 자연어 학급명 역추적 엔진 (은어 완벽 호환)
+        // 초정밀 자연어 학급명 역추적 엔진
         function findClassInText(text) {
             const norm = text.replace(/과/g, "").replace(/ /g, "");
             
-            // 1. 완성형 (예: 1전2, 2기1, 3바2)
             const directMatch = norm.match(/([1-3])(전|기|바)([1-9])/);
             if (directMatch && norm.length <= 5) return `${directMatch[1]}${directMatch[2]}${directMatch[3]}`;
 
-            // 2. 학과명 포함 (예: 기계2-1, 2전자2, 의료기계2-1)
             const deptMidMatch = norm.match(/([1-3])(전자|전기|의료전기|기계|의료기계|바이오|의약|바이오의약)([1-9])/);
             if (deptMidMatch) {
                 let deptStr = deptMidMatch[2];
@@ -598,7 +633,6 @@
                 if (dept) return `${grade}${dept}${cls}`;
             }
 
-            // 3. 학년/반 먼저 (예: 1-2바이오, 1학년2반바이오)
             const gradeFirstMatch = norm.match(/([1-3])[-]*([1-9])[반]*(기계|의료기계|기|전자|의료전기전자|의료전기|전|바이오의약|바이오|바)/);
             if (gradeFirstMatch) {
                 let grade = gradeFirstMatch[1];
@@ -611,7 +645,6 @@
                 if (dept) return `${grade}${dept}${cls}`;
             }
 
-            // 4. 문장에 흩어진 키워드 조합
             let grade = "", dept = "", cls = "";
             let gMatch = text.match(/([1-3])\s*학년/);
             if(!gMatch) gMatch = text.match(/(?:^|\s|[^0-9a-zA-Z])([1-3])\s*-/);
@@ -630,7 +663,6 @@
             return null;
         }
 
-        // 🔥 스마트 파싱 챗봇 로직 (학급 탭 1순위 스캔)
         function processChat(text) {
             if (teacherSchedules.length === 0) {
                 return "앗, 아직 시간표 데이터가 로드되지 않았습니다! 좌측에서 엑셀 파일을 먼저 올려주세요.";
@@ -681,7 +713,6 @@
                 }
             }
 
-            // 🤖 [학급 시간표 대답 로직]
             if (foundClass && !foundTeacher) {
                 if (!targetDay) {
                     if (todayNum > 0 && todayNum < 6) targetDay = numToDay[todayNum];
@@ -691,7 +722,6 @@
                 const deptNames = { "전": "의료전기전자과", "기": "의료기계과", "바": "바이오의약과" };
                 const fullClassName = `${foundClass[0]}학년 ${foundClass[2]}반 ${deptNames[foundClass[1]]} (${foundClass})`;
 
-                // 🔥 엑셀에서 뽑아낸 '학급 탭' 데이터가 있다면 최우선으로 보여줍니다 (코스/순환 완벽 반영)
                 if (Object.keys(classSchedules).length > 0 && classSchedules[foundClass]) {
                     if (targetPeriod) {
                         let cls = classSchedules[foundClass][`${targetDay}${targetPeriod}`];
@@ -706,12 +736,9 @@
                         let hasClass = false;
                         for(let i=1; i<=7; i++) {
                             let cls = classSchedules[foundClass][`${targetDay}${i}`];
-                            if(cls && cls.trim() !== "" && cls !== "-") {
-                                if (cls.includes("공강")) {
-                                    scheduleStr += `• **${i}교시**: <span style="color:#94a3b8;">${cls.replace(/\n/g, " ")}</span><br>`;
-                                } else {
-                                    scheduleStr += `• **${i}교시**: ${cls.replace(/\n/g, "<br>")}<br>`;
-                                }
+                            if(cls && cls.trim() !== "" && cls !== "-" && !cls.includes("공강")) {
+                                cls = cls.replace(/\n/g, " "); 
+                                scheduleStr += `• **${i}교시**: ${cls}<br>`;
                                 hasClass = true;
                             }
                         }
@@ -719,7 +746,6 @@
                         return scheduleStr;
                     }
                 } else {
-                    // 학급 탭이 없으면 역추적 조립 (Fallback)
                     let classSched = {};
                     for(let i=1; i<=7; i++) classSched[i] = [];
 
@@ -757,7 +783,6 @@
                 }
             }
 
-            // 🤖 [교사 시간표 대답 로직]
             if (foundTeacher) {
                 if (!targetDay) {
                     if (todayNum > 0 && todayNum < 6) targetDay = numToDay[todayNum];
@@ -944,7 +969,6 @@
                 });
             }
 
-            // 🌟 [핵심] '학년', '학급' 탭 파싱하여 classSchedules에 저장! (연강 셀 완벽 병합 처리)
             workbook.SheetNames.forEach(sheetName => {
                 if (sheetName.includes("학년") || sheetName.includes("학급") || sheetName.includes("반")) {
                     const sheet = workbook.Sheets[sheetName];
@@ -956,7 +980,6 @@
                         for (let c = 0; c < row.length; c++) {
                             let cellVal = String(row[c] || "").trim();
                             
-                            // "월"이고 바로 옆칸이 "화"인 행을 찾음 (표의 헤더)
                             if (cellVal === "월" && String(row[c+1] || "").trim() === "화") {
                                 let rawClassName = "";
                                 if (c > 0) rawClassName = String(row[c-1] || "").trim();
@@ -975,63 +998,42 @@
                                 
                                 if (normClass) {
                                     if (!classSchedules[normClass]) classSchedules[normClass] = {};
-                                    let periodData = {
-                                        1: { "월":"", "화":"", "수":"", "목":"", "금":"" },
-                                        2: { "월":"", "화":"", "수":"", "목":"", "금":"" },
-                                        3: { "월":"", "화":"", "수":"", "목":"", "금":"" },
-                                        4: { "월":"", "화":"", "수":"", "목":"", "금":"" },
-                                        5: { "월":"", "화":"", "수":"", "목":"", "금":"" },
-                                        6: { "월":"", "화":"", "수":"", "목":"", "금":"" },
-                                        7: { "월":"", "화":"", "수":"", "목":"", "금":"" }
-                                    };
+                                    let lastVal = { "월":"", "화":"", "수":"", "목":"", "금":"" };
                                     
-                                    let currentPeriod = 0;
-                                    
-                                    // r+1행부터 아래로 스캔
-                                    for (let scanR = r + 1; scanR < raw.length; scanR++) { 
-                                        const scanRow = raw[scanR];
-                                        if (String(scanRow[c] || "").trim() === "월" && String(scanRow[c+1] || "").trim() === "화") break;
+                                    for (let pIdx = 1; pIdx <= 10; pIdx++) { 
+                                        if (r + pIdx >= raw.length) break;
+                                        const pRow = raw[r + pIdx];
                                         
-                                        let periodLabel = String(scanRow[c-1] || "").trim();
-                                        let pNumMatch = periodLabel.match(/([1-7])\s*(교시|시간|차시)/);
-                                        if (!pNumMatch) pNumMatch = periodLabel.match(/^([1-7])$/);
-                                        if (!pNumMatch && periodLabel.includes("교시")) pNumMatch = periodLabel.match(/([1-7])/);
-
+                                        const periodLabel = String(pRow[c-1] || "").trim();
+                                        let pNumMatch = periodLabel.match(/([1-9])\s*교시/);
+                                        if (!pNumMatch) pNumMatch = periodLabel.match(/^([1-9])$/);
+                                        if (!pNumMatch) pNumMatch = periodLabel.match(/([1-9])\s*시간/);
+                                        if (!pNumMatch) pNumMatch = periodLabel.match(/([1-9])\s*차시/);
+                                        if (!pNumMatch && periodLabel.includes("교시")) pNumMatch = periodLabel.match(/([1-9])/);
+                                        
                                         if (pNumMatch) {
-                                            currentPeriod = parseInt(pNumMatch[1]);
-                                        }
-
-                                        if (currentPeriod >= 1 && currentPeriod <= 7) {
-                                            ["월", "화", "수", "목", "금"].forEach((day, idx) => {
-                                                let val = String(scanRow[c + idx] || "").trim();
-                                                val = val.replace(/\r\n/g, "\n").replace(/\n/g, "\n");
-                                                if (val) {
-                                                    if (periodData[currentPeriod][day]) {
-                                                        periodData[currentPeriod][day] += "\n" + val;
-                                                    } else {
-                                                        periodData[currentPeriod][day] = val;
-                                                    }
-                                                }
-                                            });
-                                        }
-                                    }
-                                    
-                                    // 병합 셀 상속 (수직 상속) - 코스/순환 수업 완벽 복제
-                                    for (let p = 1; p <= 7; p++) {
-                                        ["월", "화", "수", "목", "금"].forEach(day => {
-                                            let text = periodData[p][day].replace(/\n\n/g, "\n").replace(/^\n|\n$/g, "").trim();
+                                            const p = pNumMatch[1];
+                                            let vals = {
+                                                "월": String(pRow[c] || "").trim(),
+                                                "화": String(pRow[c+1] || "").trim(),
+                                                "수": String(pRow[c+2] || "").trim(),
+                                                "목": String(pRow[c+3] || "").trim(),
+                                                "금": String(pRow[c+4] || "").trim()
+                                            };
                                             
-                                            // 만약 내용이 없고 1교시가 아니라면, 윗 교시에서 상속받음!
-                                            if (!text && p > 1) {
-                                                if (day === "금" && p >= 5) {
-                                                    text = ""; // 금요일 5~7교시는 예외
+                                            ["월", "화", "수", "목", "금"].forEach(day => {
+                                                if (vals[day] === "" && lastVal[day] && !lastVal[day].includes("공강") && lastVal[day] !== "-") {
+                                                    vals[day] = lastVal[day]; 
                                                 } else {
-                                                    text = periodData[p-1][day]; 
-                                                    periodData[p][day] = text; // 상속받은 값을 저장해두어 다음 교시도 상속 가능하게 함
+                                                    lastVal[day] = vals[day];
                                                 }
-                                            }
-                                            classSchedules[normClass][`${day}${p}`] = text;
-                                        });
+                                                classSchedules[normClass][`${day}${p}`] = vals[day];
+                                            });
+                                        } else if (periodLabel === "") {
+                                            continue; 
+                                        } else {
+                                            break; 
+                                        }
                                     }
                                 }
                             }
@@ -1040,7 +1042,6 @@
                 }
             });
 
-            // --- 기존 교사 시간표 파싱 ---
             let targetSheetName = workbook.SheetNames[0]; 
             for (let name of workbook.SheetNames) {
                 if (name.includes("전체") || name.includes("교사") || name.includes("시간표")) {
