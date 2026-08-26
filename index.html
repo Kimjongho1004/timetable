@@ -30,7 +30,7 @@
             min-height: 100vh; box-sizing: border-box; 
         }
 
-        /* 🔥 타이틀 크기 2배 확대 및 세련된 디자인 적용 */
+        /* 🔥 타이틀 디자인 */
         .header { text-align: center; margin-bottom: 35px; width: 100%; max-width: 1400px; padding-top: 10px; }
         .header h1 { 
             font-size: 3.5rem; 
@@ -368,9 +368,9 @@
                 </h2>
                 <div class="upload-area">
                     <div class="file-input-wrapper">
-                        <!-- 🔥 오직 1개의 업로드 버튼만 남김 -->
+                        <!-- 🔥 오직 1개의 수동 업로드 버튼 (교사 시간표) -->
                         <label for="excelUpload" class="file-input-btn" id="uploadLabel">
-                            📁 교무부 원본 시간표 엑셀 업로드 (클릭)
+                            📁 교무부 시간표 엑셀 업로드 (클릭)
                         </label>
                         <input type="file" id="excelUpload" accept=".xlsx, .xls, .csv" style="display:none;">
                     </div>
@@ -503,7 +503,7 @@
         </div>
         <div class="chat-input-area">
             <!-- 🔥 입력창 클릭 시 문구 싹 지워지는 로직 -->
-            <input type="text" id="chatInput" value="넌 무엇을 할 수 있지?" onfocus="clearInitialText(this)" onkeypress="if(event.key === 'Enter') handleChat()">
+            <input type="text" id="chatInput" value="넌 무엇을 할 수 있지?" onmousedown="clearInitialText(this)" onkeydown="clearInitialText(this)" onkeypress="if(event.key === 'Enter') handleChat()">
             <button onclick="handleChat()">전송</button>
         </div>
     </div>
@@ -587,6 +587,7 @@
             loadFromStorage();  
         });
 
+        // 🔥 입력창 클릭 시 기본 문구 1회 지우기
         let isInitialChat = true;
         function clearInitialText(el) {
             if (isInitialChat && el.value === "넌 무엇을 할 수 있지?") {
@@ -595,6 +596,7 @@
             }
         }
 
+        // 🔥 일과 시간표 매핑 로직 (쉬는시간, 점심시간 판단)
         function getCurrentPeriod() {
             const now = new Date();
             const day = now.getDay();
@@ -638,6 +640,7 @@
             const win = document.getElementById('chatbotWindow');
             if (win.style.display === 'none' || win.style.display === '') {
                 win.style.display = 'flex';
+                // 포커스 이동 제거: 클릭해야만 지워지도록
             } else {
                 win.style.display = 'none';
             }
@@ -727,12 +730,13 @@
 
         // 🔥 스마트 파싱 챗봇 종합 엔진
         function processChat(text) {
+            // 🤖 [도움말 기능 최우선 응답]
             if (text.replace(/\s+/g, "").includes("무엇을할수있") || text.includes("기능") || text.includes("도움말") || text.includes("뭐해") || text === "넌 무엇을 할 수 있지?") {
                 return `🤖 **T-Bot 기능 안내**<br><br>다음과 같이 편하게 물어보시면 다 대답해 드립니다!<br>• 👩‍🏫 **교사 시간표**: "김종호 선생님 오늘 시간표"<br>• 🏫 **학급 시간표**: "전자2-1 지금 무슨 수업해?"<br>• 🎓 **학생 찾기**: "권영은 소속이 어디야?", "홍길동 지금 수업 뭐야?"<br>• 🔍 **조건 검색**: "오늘 2교시 수업 없는 쌤", "2기2 소통 선생님 누구?"`;
             }
 
             if (teacherSchedules.length === 0) {
-                return "앗, 아직 시간표 데이터가 로드되지 않았습니다! 좌측에서 엑셀 파일을 먼저 올려주세요.";
+                return "앗, 아직 시간표 데이터가 로드되지 않았습니다! 좌측에서 교무부 시간표 엑셀 파일을 먼저 올려주세요.";
             }
 
             let foundTeacher = null;
@@ -868,9 +872,9 @@
                         let cpInfo = getCurrentPeriod();
                         let currentDayStr = numToDay[new Date().getDay()];
 
-                        if (!pToCheck) {
+                        if (!pToCheck && !dToCheck && isNow) {
                              if (cpInfo) pToCheck = cpInfo.p;
-                             if (!dToCheck) dToCheck = currentDayStr;
+                             dToCheck = currentDayStr;
                              isRealTime = true;
                         } else {
                              if (!dToCheck) dToCheck = currentDayStr; 
@@ -1030,10 +1034,9 @@
                 }
             }
 
-            // ⚠️ 로컬 환경 검증 알림
             let fallbackMsg = "무엇을 찾으시나요? 선생님 이름이나 학급명(전자2-1 등)을 포함해서 질문해주세요.😊";
             if (studentDB.length === 0) {
-                fallbackMsg += "<br><br><span style='font-size:0.8rem; color:#fca5a5;'>※ 학생 검색 기능은 인터넷(GitHub) 환경에 명렬표(roster.xlsx)가 업로드되어야 활성화됩니다. (현재 대기 중이거나 파일 없음)</span>";
+                fallbackMsg += "<br><br><span style='font-size:0.8rem; color:#fca5a5;'>※ 학생 검색 기능은 깃허브에 명렬표(roster.xlsx)가 업로드되어 연동되어야 활성화됩니다.</span>";
             }
             return fallbackMsg;
         }
@@ -1089,7 +1092,7 @@
                 });
         }
 
-        // 🔥 학생 명렬표 전용 GitHub 자동 다운로드 로직
+        // 🔥 학생 명렬표 전용 GitHub 자동 다운로드 로직 (어떤 탭 이름이든 싹 다 스캔)
         function loadRoster() {
             fetch('roster.xlsx?t=' + new Date().getTime())
                 .then(response => {
@@ -1155,10 +1158,13 @@
                             }
                         }
                     });
-                    document.getElementById('rosterStatus').innerHTML = `<span style="color:var(--success); font-weight:bold;">연동 완료 (${studentDB.length}명)</span>`;
+                    
+                    let el = document.getElementById('rosterStatus');
+                    if (el) el.innerHTML = `<span style="color:var(--success); font-weight:bold;">연동 완료 (${studentDB.length}명)</span>`;
                 })
                 .catch(error => {
-                    document.getElementById('rosterStatus').innerHTML = `<span style="color:var(--warning);">파일 없음 (roster.xlsx)</span>`;
+                    let el = document.getElementById('rosterStatus');
+                    if (el) el.innerHTML = `<span style="color:var(--warning);">파일 없음 (roster.xlsx)</span>`;
                 });
         }
 
