@@ -229,7 +229,7 @@
             display: none; margin-top: 20px; padding: 18px; border-radius: 10px; font-size: 1rem; font-weight: bold; line-height: 1.6; text-align: center;
         }
 
-        /* 팝업 스타일 */
+        /* 당일 시간표 모달(팝업) 스타일 */
         .modal-overlay {
             position: fixed; top: 0; left: 0; right: 0; bottom: 0;
             background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center;
@@ -270,30 +270,9 @@
         }
         .chatbot-btn:hover { transform: scale(1.1); }
         
-        .chatbot-tooltip {
-            position: fixed; bottom: 105px; left: 30px;
-            background: rgba(30, 41, 59, 0.95); border: 1px solid var(--primary);
-            color: white; padding: 12px 18px; border-radius: 12px; font-size: 0.95rem;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.5); z-index: 999;
-            cursor: pointer; opacity: 0; pointer-events: none;
-            animation: showTooltip 6s ease forwards;
-        }
-        .chatbot-tooltip::after {
-            content: ''; position: absolute; bottom: -6px; left: 22px;
-            width: 12px; height: 12px; background: rgba(30, 41, 59, 0.95);
-            border-right: 1px solid var(--primary); border-bottom: 1px solid var(--primary);
-            transform: rotate(45deg);
-        }
-        @keyframes showTooltip {
-            0% { opacity: 0; transform: translateY(10px); pointer-events: none; }
-            10% { opacity: 1; transform: translateY(0); pointer-events: auto; }
-            85% { opacity: 1; transform: translateY(0); pointer-events: auto; }
-            100% { opacity: 0; transform: translateY(10px); pointer-events: none; visibility: hidden; }
-        }
-
         .chatbot-window {
             position: fixed; bottom: 110px; left: 30px;
-            width: 380px; height: 550px; background: var(--card-bg);
+            width: 360px; height: 520px; background: var(--card-bg);
             border: 1px solid rgba(56, 189, 248, 0.4); border-radius: 16px;
             box-shadow: 0 15px 40px rgba(0,0,0,0.6);
             display: none; flex-direction: column; overflow: hidden;
@@ -335,7 +314,6 @@
             .main-container { grid-template-columns: 1fr; }
             .empty-state { min-height: 300px; padding: 30px; }
             .chatbot-btn { left: 20px; bottom: 20px; width: 55px; height: 55px; }
-            .chatbot-tooltip { left: 20px; bottom: 85px; }
             .chatbot-window { left: 20px; bottom: 85px; width: 320px; }
         }
     </style>
@@ -352,19 +330,19 @@
         <div class="left-sidebar">
             <div class="panel">
                 <h2 class="panel-title">
-                    <span>1. 파일 로드</span>
+                    <span>1. 데이터 로드</span>
                     <button class="btn danger" id="resetBtn" style="display:none;" onclick="clearStorage()">초기화</button>
                 </h2>
                 <div class="upload-area">
                     <div class="file-input-wrapper">
-                        <!-- 🔥 교사 시간표 업로드 버튼 -->
+                        <!-- 🔥 교무부 시간표 업로드 버튼 -->
                         <label for="excelUpload" class="file-input-btn" id="uploadLabel">
                             📁 교무부 시간표 엑셀 업로드 (클릭)
                         </label>
                         <input type="file" id="excelUpload" accept=".xlsx, .xls, .csv" style="display:none;">
                     </div>
                     <div class="file-input-wrapper" style="margin-top: 10px;">
-                        <!-- 🔥 명렬표 수동 업로드 버튼 복구 (직접 업로드 가능) -->
+                        <!-- 🔥 수동 명렬표 업로드 버튼 -->
                         <label for="rosterUpload" class="file-input-btn" id="rosterLabel">
                             📁 학생 명렬표 엑셀 업로드 (선택)
                         </label>
@@ -465,11 +443,6 @@
     <!-- 🔥 카피라이트 마크 -->
     <div class="copyright" onclick="showDevPopup()">© Made By Kimjongho</div>
 
-    <!-- 🔥 챗봇 온보딩 말풍선 -->
-    <div class="chatbot-tooltip" id="chatbotTooltip" onclick="hideTooltip()">
-        👋 안녕하세요! 시간표 도우미 <strong>T-Bot</strong>입니다.
-    </div>
-
     <!-- 🔥 챗봇 플로팅 버튼 및 창 -->
     <button class="chatbot-btn" onclick="toggleChatbot()" title="시간표 질문하기">💬</button>
     
@@ -484,7 +457,7 @@
             </div>
         </div>
         <div class="chat-input-area">
-            <!-- 🔥 입력창 클릭 시 문구 싹 지워지는 로직 완벽 반영 -->
+            <!-- 🔥 입력창 클릭 시 문구 지워지는 완벽 로직 적용 -->
             <input type="text" id="chatInput" value="넌 무엇을 할 수 있지?" onmousedown="clearInitialText(this)" onkeydown="clearInitialText(this)" onkeypress="if(event.key === 'Enter') handleChat()">
             <button onclick="handleChat()">전송</button>
         </div>
@@ -565,11 +538,10 @@
 
         document.addEventListener('DOMContentLoaded', () => {
             addDateInput();
-            loadSchoolEvents(); // 이건 유지 (학사일정은 가벼워서 오류 없음)
             loadFromStorage();  
         });
 
-        // 🔥 채팅창 초기 문구 지우기 로직
+        // 🔥 입력창 클릭 시 문구 지우기 로직 (자동포커스 제거로 완벽 작동)
         let isInitialChat = true;
         function clearInitialText(el) {
             if (isInitialChat && el.value === "넌 무엇을 할 수 있지?") {
@@ -578,7 +550,7 @@
             }
         }
 
-        // 🔥 일과 시간표 분 단위 정밀 판별 (금요일 4교시 단축 포함)
+        // 🔥 일과 시간표 매핑 로직 (금요일 4교시 단축 및 점심/쉬는시간 판별 완벽 대응)
         function getCurrentPeriod() {
             const now = new Date();
             const day = now.getDay();
@@ -612,13 +584,7 @@
             return null; 
         }
 
-        function hideTooltip() {
-            const tooltip = document.getElementById('chatbotTooltip');
-            if(tooltip) tooltip.style.display = 'none';
-        }
-
         function toggleChatbot() {
-            hideTooltip(); 
             const win = document.getElementById('chatbotWindow');
             if (win.style.display === 'none' || win.style.display === '') {
                 win.style.display = 'flex';
@@ -759,19 +725,22 @@
             let targetDay = null;
             const todayNum = new Date().getDay(); 
             
-            if (text.includes("오늘")) {
+            // 🔥 '지금', '방금', '수업', '현재' 라는 단어가 포함되어 있으면 요일 판별에서 그 단어를 지우고 판별함 (지금 -> 금요일 오인식 방지!)
+            let safeTextForDay = text.replace(/지금/g, "").replace(/방금/g, "").replace(/수업/g, "").replace(/현재/g, "");
+
+            if (safeTextForDay.includes("오늘")) {
                 if (todayNum === 0 || todayNum === 6) return "오늘은 주말이라 정규 수업이 없습니다! 평일(월~금)을 기준으로 물어봐주세요.😊";
                 targetDay = numToDay[todayNum];
-            } else if (text.includes("내일")) {
+            } else if (safeTextForDay.includes("내일")) {
                 let tmrw = (todayNum + 1) % 7;
                 if (tmrw === 0 || tmrw === 6) return "내일은 주말이라 정규 수업이 없습니다! 평일(월~금)을 기준으로 물어봐주세요.😊";
                 targetDay = numToDay[tmrw];
-            } else if (text.includes("모레")) {
+            } else if (safeTextForDay.includes("모레")) {
                 let dat = (todayNum + 2) % 7;
                 if (dat === 0 || dat === 6) return "모레는 주말이라 정규 수업이 없습니다! 평일(월~금)을 기준으로 물어봐주세요.😊";
                 targetDay = numToDay[dat];
             } else {
-                const dayMatch = text.match(/(월|화|수|목|금)/); 
+                const dayMatch = safeTextForDay.match(/(월|화|수|목|금)/); 
                 if (dayMatch) targetDay = dayMatch[1];
             }
 
@@ -871,12 +840,45 @@
                     let isAskingClass = isNow || text.includes("수업") || text.includes("어디") || text.includes("뭐해") || targetPeriod || targetDay || text.includes("시간");
 
                     if (isAskingClass) {
-                        let currentDayStr = numToDay[new Date().getDay()];
+                        let pToCheck = targetPeriod;
+                        let dToCheck = targetDay;
+                        let isRealTime = false;
+                        
                         let cpInfo = getCurrentPeriod();
-                        let dToCheck = targetDay || currentDayStr;
+                        let currentDayStr = numToDay[new Date().getDay()];
 
-                        // 1. 전체 시간표 HTML 생성
-                        let fullSchedHtml = `<br><br>👇 **${s.name} 학생의 오늘(${dToCheck}요일) 전체 수업 시간표**<br><div style="background:rgba(0,0,0,0.2); padding:12px; border-radius:8px; margin-top:8px; line-height:1.8;">`;
+                        if (!pToCheck && !dToCheck && isNow) {
+                             if (cpInfo) pToCheck = cpInfo.p;
+                             dToCheck = currentDayStr;
+                             isRealTime = true;
+                        } else {
+                             if (!dToCheck) dToCheck = currentDayStr; 
+                        }
+
+                        if (!pToCheck || !dToCheck) {
+                            if (!pToCheck && dToCheck) {
+                                // 1. 전체 시간표 HTML 생성
+                                let fullSchedHtml = `<br><br>👇 **${s.name} 학생의 오늘(${dToCheck}요일) 전체 수업 시간표는 아래와 같습니다.**<br><div style="background:rgba(0,0,0,0.2); padding:12px; border-radius:8px; margin-top:8px; line-height:1.8;">`;
+                                let hasClass = false;
+                                for(let i=1; i<=7; i++) {
+                                    let cls = getClassSubject(s.cls, dToCheck, i);
+                                    if(cls) {
+                                        fullSchedHtml += `• **${i}교시**: ${cls}<br>`;
+                                        hasClass = true;
+                                    } else {
+                                        fullSchedHtml += `• **${i}교시**: <span style="color:#94a3b8;">공강</span><br>`;
+                                    }
+                                }
+                                fullSchedHtml += `</div>`;
+                                if (!hasClass) fullSchedHtml = `<br><br>오늘(${dToCheck}요일)은 배정된 정규 수업이 없습니다! 🎉`;
+                                
+                                return `${stdStr}${fullSchedHtml}`;
+                            }
+                            return `${stdStr}<br>⏰ 지금은 정규 일과 시간이 아니며, 질문하신 교시를 파악할 수 없습니다.`;
+                        }
+
+                        // 전체 시간표 HTML 생성
+                        let fullSchedHtml = `<br><br>👇 **${s.name} 학생의 오늘(${dToCheck}요일) 전체 수업 시간표는 아래와 같습니다.**<br><div style="background:rgba(0,0,0,0.2); padding:12px; border-radius:8px; margin-top:8px; line-height:1.8;">`;
                         let hasClass = false;
                         for(let i=1; i<=7; i++) {
                             let cls = getClassSubject(s.cls, dToCheck, i);
@@ -890,37 +892,31 @@
                         fullSchedHtml += `</div>`;
                         if (!hasClass) fullSchedHtml = `<br><br>오늘(${dToCheck}요일)은 배정된 정규 수업이 없습니다! 🎉`;
 
-                        // 2. 현재 상황 브리핑
-                        if (isNow) {
+                        // 현재 상황 브리핑
+                        if (isRealTime && cpInfo) {
                             let statusMsg = "";
-                            if (!cpInfo || !currentDayStr || currentDayStr === "토" || currentDayStr === "일") {
-                                statusMsg = `⏰ 지금은 정규 일과 시간이 아닙니다.`;
-                            } else if (cpInfo.status === 'break') {
+                            if (cpInfo.status === 'break') {
                                 statusMsg = `☕ 지금은 **쉬는 시간**입니다.`;
                             } else if (cpInfo.status === 'lunch') {
                                 statusMsg = `🍚 지금은 **점심시간**입니다.`;
                             } else {
                                 let clsInfo = getClassSubject(s.cls, currentDayStr, cpInfo.p);
                                 if (clsInfo) {
-                                    statusMsg = `⏰ 지금은 **${cpInfo.p}교시 <strong style='color:#fbbf24;'>[${clsInfo}]</strong> 수업**입니다.`;
+                                    statusMsg = `⏰ 지금은 **${cpInfo.p}교시 <strong style='color:#fbbf24;'>[${clsInfo}]</strong>** 수업입니다.`;
                                 } else {
                                     statusMsg = `⏰ 지금은 **${cpInfo.p}교시** 공강입니다.`;
                                 }
                             }
                             return `${stdStr}<br>${statusMsg}${fullSchedHtml}`;
                         } 
-                        // 3. 특정 시간 브리핑 (예: "3교시 수업 뭐야?")
-                        else if (targetPeriod) {
-                            let clsInfo = getClassSubject(s.cls, dToCheck, targetPeriod);
+                        // 특정 시간 브리핑 (예: "3교시 수업 뭐야?")
+                        else if (pToCheck) {
+                            let clsInfo = getClassSubject(s.cls, dToCheck, pToCheck);
                             if (clsInfo) {
-                                return `${stdStr}<br>⏰ ${dToCheck}요일(**${targetPeriod}교시**) <strong style='color:#fbbf24;'>[${clsInfo}]</strong> 수업입니다.${fullSchedHtml}`;
+                                return `${stdStr}<br>⏰ ${dToCheck}요일(**${pToCheck}교시**) <strong style='color:#fbbf24;'>[${clsInfo}]</strong> 수업입니다.${fullSchedHtml}`;
                             } else {
-                                return `${stdStr}<br>⏰ ${dToCheck}요일(**${targetPeriod}교시**) 정규 수업이 없습니다(공강).${fullSchedHtml}`;
+                                return `${stdStr}<br>⏰ ${dToCheck}요일(**${pToCheck}교시**) 정규 수업이 없습니다(공강).${fullSchedHtml}`;
                             }
-                        } 
-                        // 4. 일반 (예: "오늘 수업 뭐야?")
-                        else {
-                            return `${stdStr}${fullSchedHtml}`;
                         }
                     } else {
                         return `${stdStr} 무엇이 궁금하신가요?`;
@@ -937,7 +933,7 @@
                 const deptNames = { "전": "의료전기전자과", "기": "의료기계과", "바": "바이오의약과" };
                 const fullClassName = `${foundClass[0]}학년 ${foundClass[2]}반 ${deptNames[foundClass[1]]}`;
 
-                let fullSchedHtml = `<br><br>👇 **${foundClass}반의 오늘(${dToCheck}요일) 전체 시간표**<br><div style="background:rgba(0,0,0,0.2); padding:12px; border-radius:8px; margin-top:8px; line-height:1.8;">`;
+                let fullSchedHtml = `<br><br>👇 **${foundClass}반의 오늘(${dToCheck}요일) 전체 시간표는 아래와 같습니다.**<br><div style="background:rgba(0,0,0,0.2); padding:12px; border-radius:8px; margin-top:8px; line-height:1.8;">`;
                 let hasClass = false;
                 for(let i=1; i<=7; i++) {
                     let cls = getClassSubject(foundClass, dToCheck, i);
@@ -962,7 +958,7 @@
                     } else {
                         let clsInfo = getClassSubject(foundClass, currentDayStr, cpInfo.p);
                         if (clsInfo) {
-                            statusMsg = `⏰ 지금은 **${cpInfo.p}교시 <strong style='color:#fbbf24;'>[${clsInfo}]</strong> 수업**입니다.`;
+                            statusMsg = `⏰ 지금은 **${cpInfo.p}교시 <strong style='color:#fbbf24;'>[${clsInfo}]</strong>** 수업입니다.`;
                         } else {
                             statusMsg = `⏰ 지금은 **${cpInfo.p}교시** 공강입니다.`;
                         }
@@ -986,7 +982,7 @@
                 let cpInfo = getCurrentPeriod();
                 let dToCheck = targetDay || currentDayStr;
 
-                let fullSchedHtml = `<br><br>👇 **${foundTeacher.name} 선생님의 오늘(${dToCheck}요일) 전체 시간표**<br><div style="background:rgba(0,0,0,0.2); padding:12px; border-radius:8px; margin-top:8px; line-height:1.8;">`;
+                let fullSchedHtml = `<br><br>👇 **${foundTeacher.name} 선생님의 오늘(${dToCheck}요일) 전체 시간표는 아래와 같습니다.**<br><div style="background:rgba(0,0,0,0.2); padding:12px; border-radius:8px; margin-top:8px; line-height:1.8;">`;
                 let hasClass = false;
                 for(let i=1; i<=7; i++) {
                     let cls = foundTeacher.schedule[`${dToCheck}${i}`];
@@ -1011,7 +1007,7 @@
                     } else {
                         let cls = foundTeacher.schedule[`${currentDayStr}${cpInfo.p}`];
                         if (!isFreePeriod(cls, currentDayStr, cpInfo.p, foundTeacher.name)) {
-                            statusMsg = `⏰ 지금은 **${cpInfo.p}교시 <strong style='color:#fbbf24;'>[${cls}]</strong> 수업**입니다. 👨‍🏫`;
+                            statusMsg = `⏰ 지금은 **${cpInfo.p}교시 <strong style='color:#fbbf24;'>[${cls}]</strong>** 수업입니다. 👨‍🏫`;
                         } else {
                             statusMsg = `⏰ 지금은 **${cpInfo.p}교시** 공강/업무 시간입니다.`;
                         }
@@ -1044,44 +1040,6 @@
                 return; 
             }
             document.getElementById('devModal').style.display = 'none';
-        }
-
-        function loadSchoolEvents() {
-            fetch('events.xlsx?t=' + new Date().getTime())
-                .then(response => {
-                    if (!response.ok) throw new Error("학사일정 파일 없음");
-                    return response.arrayBuffer();
-                })
-                .then(data => {
-                    const workbook = XLSX.read(new Uint8Array(data), { type: 'array' });
-                    const sheet = workbook.Sheets[workbook.SheetNames[0]];
-                    const eventData = XLSX.utils.sheet_to_json(sheet, { raw: false, dateNF: 'yyyy-mm-dd' });
-                    
-                    schoolEvents = {};
-                    eventData.forEach(row => {
-                        const dateVal = row['날짜'] || row['일자'];
-                        const periodVal = String(row['제외 교시'] || row['교시'] || row['제외교시'] || '종일').trim();
-                        const eventName = row['행사명'] || row['내용'] || '학교 행사';
-
-                        if (dateVal) {
-                            let dateStr = String(dateVal).replace(/\./g, '-').replace(/\//g, '-').trim();
-                            const dParts = dateStr.split('-');
-                            if(dParts.length === 3) {
-                                dateStr = `${dParts[0]}-${dParts[1].padStart(2,'0')}-${dParts[2].padStart(2,'0')}`;
-                            }
-
-                            if (periodVal === '종일' || periodVal === '전체') {
-                                schoolEvents[`${dateStr}_종일`] = eventName;
-                            } else {
-                                const periods = periodVal.split(',').map(p => p.replace(/[^0-9]/g, "").trim());
-                                periods.forEach(p => {
-                                    if(p) schoolEvents[`${dateStr}_${p}`] = eventName;
-                                });
-                            }
-                        }
-                    });
-                })
-                .catch(error => {});
         }
 
         function addDateInput() {
@@ -1260,28 +1218,6 @@
 
         function parseSchoolExcel(workbook, fileName) {
             classSchedules = {}; 
-
-            const eventSheetName = workbook.SheetNames.find(name => name.includes("학사일정") || name.includes("행사") || name.includes("제외"));
-            if (eventSheetName) {
-                schoolEvents = {};
-                const eventSheet = workbook.Sheets[eventSheetName];
-                const eventData = XLSX.utils.sheet_to_json(eventSheet, { raw: false, dateNF: 'yyyy-mm-dd' });
-                eventData.forEach(row => {
-                    const dateVal = row['날짜'] || row['일자'];
-                    const periodVal = String(row['제외 교시'] || row['교시'] || row['제외교시'] || '종일').trim();
-                    const eventName = row['행사명'] || row['내용'] || '학교 행사';
-                    if (dateVal) {
-                        let dateStr = String(dateVal).replace(/\./g, '-').replace(/\//g, '-').trim();
-                        const dParts = dateStr.split('-');
-                        if(dParts.length === 3) dateStr = `${dParts[0]}-${dParts[1].padStart(2,'0')}-${dParts[2].padStart(2,'0')}`;
-                        if (periodVal === '종일' || periodVal === '전체') schoolEvents[`${dateStr}_종일`] = eventName;
-                        else {
-                            const periods = periodVal.split(',').map(p => p.replace(/[^0-9]/g, "").trim());
-                            periods.forEach(p => { if(p) schoolEvents[`${dateStr}_${p}`] = eventName; });
-                        }
-                    }
-                });
-            }
 
             workbook.SheetNames.forEach(sheetName => {
                 if (sheetName.includes("학년") || sheetName.includes("학급") || sheetName.includes("반")) {
