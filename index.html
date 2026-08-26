@@ -30,6 +30,7 @@
             min-height: 100vh; box-sizing: border-box; 
         }
 
+        /* 🔥 타이틀 크기 2배 확대 및 세련된 디자인 적용 */
         .header { text-align: center; margin-bottom: 35px; width: 100%; max-width: 1400px; padding-top: 10px; }
         .header h1 { 
             font-size: 3.5rem; 
@@ -323,6 +324,7 @@
         .chat-input-area input {
             flex: 1; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
             color: white; padding: 12px 15px; border-radius: 8px; outline: none; font-size: 0.95rem;
+            cursor: pointer;
         }
         .chat-input-area input:focus { border-color: var(--primary); }
         .chat-input-area button {
@@ -357,7 +359,7 @@
                 </h2>
                 <div class="upload-area">
                     <div class="file-input-wrapper">
-                        <!-- 🔥 업로드 유도 문구 -->
+                        <!-- 🔥 오직 1개의 업로드 버튼만 남김 -->
                         <label for="excelUpload" class="file-input-btn" id="uploadLabel">
                             📁 교무부 원본 시간표 엑셀 업로드 (클릭)
                         </label>
@@ -474,13 +476,13 @@
         <div class="chat-body" id="chatBody">
             <div class="chat-msg bot">
                 안녕하세요! T-Bot 입니다.<br><br>
-                선생님 성함, 학급명(기계2-1 등), 요일, 시간, 특정 학생 이름까지 편하게 물어보세요!<br>
-                <span style="font-size:0.8rem; color:#bae6fd;">(예: "오늘 2교시 수업 없는 쌤?", "홍길동 지금 무슨 수업이지?")</span>
+                선생님 성함, 학급명(기계2-1 등), 요일, 시간, 특정 학생 이름(명렬표 연동)까지 무엇이든 편하게 물어보세요!<br>
+                <span style="font-size:0.8rem; color:#bae6fd;">(예: "오늘 2교시 빈 선생님?", "전자2-1 오늘 시간표", "홍길동 지금 수업 뭐야?", "2기2 소통 누구 선생님?")</span>
             </div>
         </div>
         <div class="chat-input-area">
-            <!-- 🔥 입력창 초기화 로직 추가 -->
-            <input type="text" id="chatInput" value="넌 무엇을 할 수 있지?" onfocus="clearInitialText(this)" onkeypress="if(event.key === 'Enter') handleChat()">
+            <!-- 🔥 오토포커스 제거, 클릭 시 문구 싹 지워지는 완벽 로직 적용 -->
+            <input type="text" id="chatInput" value="넌 무엇을 할 수 있지?" onmousedown="clearInitialText(this)" onkeydown="clearInitialText(this)" onkeypress="if(event.key === 'Enter') handleChat()">
             <button onclick="handleChat()">전송</button>
         </div>
     </div>
@@ -525,7 +527,7 @@
         let teacherSchedules = []; 
         let schoolEvents = {}; 
         let classSchedules = {}; 
-        let studentDB = []; // 🔥 학생 명렬표 데이터 저장소
+        let studentDB = []; 
         let availableDays = ["월", "화", "수", "목", "금"];
         let dayToNum = { "월": 1, "화": 2, "수": 3, "목": 4, "금": 5 };
         let numToDay = { 1: "월", 2: "화", 3: "수", 4: "목", 5: "금", 6: "토", 0: "일" };
@@ -560,10 +562,11 @@
         document.addEventListener('DOMContentLoaded', () => {
             addDateInput();
             loadSchoolEvents(); 
+            loadRoster(); // 🔥 깃허브에서 명렬표(roster.xlsx)를 조용히 자동 로드
             loadFromStorage();  
         });
 
-        // 🔥 입력창 클릭 시 기본 문구 1회 지우기
+        // 🔥 채팅창 초기 문구 지우기 로직 (자동 포커스 해제)
         let isInitialChat = true;
         function clearInitialText(el) {
             if (isInitialChat && el.value === "넌 무엇을 할 수 있지?") {
@@ -572,15 +575,14 @@
             }
         }
 
-        // 🔥 현재 일과 시간표 매핑 로직 (쉬는시간, 점심시간 판단)
+        // 🔥 일과 시간표 로직 (금요일 단축 및 점심/쉬는시간 판별)
         function getCurrentPeriod() {
             const now = new Date();
             const day = now.getDay();
-            if (day === 0 || day === 6) return null; // 주말
+            if (day === 0 || day === 6) return null;
             
             const time = now.getHours() * 60 + now.getMinutes();
 
-            // 금요일(5)은 4교시, 평일은 7교시 기준 (시간표 하드코딩)
             const schedule = day === 5 ? [
                 [8*60+45, 9*60+35, 1],
                 [9*60+45, 10*60+35, 2],
@@ -597,17 +599,14 @@
             ];
 
             for (let s of schedule) {
-                // 수업 중
                 if (time >= s[0] && time <= s[1]) return { p: s[2], status: 'class' };
-                // 수업 전 쉬는 시간 (10분)
                 if (time >= s[0]-10 && time < s[0]) return { p: s[2], status: 'break' };
             }
             
-            // 점심시간
             if (day !== 5 && time >= 12*60+35 && time < 13*60+25) return { p: 5, status: 'lunch' };
             if (day === 5 && time >= 11*60+35 && time < 12*60+25) return { p: 4, status: 'lunch' };
 
-            return null; // 일과 종료 또는 전
+            return null; 
         }
 
         function hideTooltip() {
@@ -620,7 +619,7 @@
             const win = document.getElementById('chatbotWindow');
             if (win.style.display === 'none' || win.style.display === '') {
                 win.style.display = 'flex';
-                document.getElementById('chatInput').focus();
+                // focus 제거: 문구가 바로 지워지는 것을 방지함
             } else {
                 win.style.display = 'none';
             }
@@ -640,7 +639,7 @@
             const text = inputEl.value.trim();
             if(!text) return;
             
-            isInitialChat = false; // 전송 시 지워짐 플래그 끄기
+            isInitialChat = false; 
             appendMessage('user', text);
             inputEl.value = '';
 
@@ -710,8 +709,8 @@
 
         // 🔥 스마트 파싱 챗봇 종합 엔진
         function processChat(text) {
-            // 💡 "넌 무엇을 할 수 있지?" 명령어 처리
-            if (text.replace(/\s+/g, "").includes("무엇을할수있") || text.includes("기능") || text.includes("도움말") || text === "넌 무엇을 할 수 있지?") {
+            // 🤖 [도움말 기능]
+            if (text.replace(/\s+/g, "").includes("무엇을할수있") || text.includes("기능") || text.includes("도움말") || text.includes("뭐해") || text === "넌 무엇을 할 수 있지?") {
                 return `🤖 **T-Bot 기능 안내**<br><br>다음과 같이 편하게 물어보시면 다 대답해 드립니다!<br>• 👩‍🏫 **교사 시간표**: "김종호 선생님 오늘 시간표"<br>• 🏫 **학급 시간표**: "전자2-1 지금 무슨 수업해?"<br>• 🎓 **학생 찾기**: "권영은 소속이 어디야?", "홍길동 지금 수업 뭐야?"<br>• 🔍 **조건 검색**: "오늘 2교시 수업 없는 쌤", "2기2 소통 선생님 누구?"`;
             }
 
@@ -768,7 +767,6 @@
             const hasKeywordFree = text.match(/(없는|공강|쉬는|비는)/);
             const hasKeywordBusy = text.match(/(있는|수업하는|수업\s*있)/);
 
-            // 🤖 1 & 2. "오늘 2교시 수업 없는(있는) 선생님은?"
             if (text.includes("선생님") && (hasKeywordFree || hasKeywordBusy) && targetPeriod && !foundClass && !foundTeacher) {
                 let d = targetDay || (todayNum > 0 && todayNum < 6 ? numToDay[todayNum] : null);
                 if (!d) return "어느 요일인지 파악할 수 없습니다. (예: 오늘 2교시 공강인 선생님)";
@@ -785,7 +783,6 @@
                 return `🗓️ **${d}요일 ${targetPeriod}교시**에 ${state} 선생님 목록입니다.<br><br><div style="font-size:0.9rem; color:#bae6fd; line-height:1.6;">${list.join(", ")}</div>`;
             }
 
-            // 🤖 6. "2기2 소통 과목 가르치는 선생님은?"
             if (foundClass && text.match(/선생님|누구/)) {
                 let quoteMatch = text.match(/'([^']+)'|"([^"]+)"/);
                 let subjKw = quoteMatch ? (quoteMatch[1] || quoteMatch[2]) : "";
@@ -826,13 +823,17 @@
                 }
             }
 
-            // 🤖 4 & 5. 학생 이름으로 명렬표 찾기 및 실시간 수업 확인
+            // 🤖 [학생 명렬표 검색 및 수업 추적]
             if (studentDB.length > 0 && !foundTeacher && !foundClass) {
                 let foundStudents = studentDB.filter(s => text.includes(s.name));
                 if (foundStudents.length > 0) {
                     if (foundStudents.length > 1) {
-                        let names = foundStudents.map(s => `${s.cls[0]}학년 ${s.cls[2]}반 ${s.name}`).join(", ");
-                        return `동명이인이 있습니다: ${names}. 어느 학생을 찾으시나요? (학급이나 학년과 함께 질문해주세요)`;
+                        let narrowed = foundStudents.filter(s => text.includes(s.cls[0]+"학년") || text.includes(s.cls[2]+"반"));
+                        if (narrowed.length === 1) foundStudents = narrowed;
+                        else {
+                            let names = foundStudents.map(s => `${s.cls[0]}학년 ${s.cls[2]}반 ${s.name}`).join(", ");
+                            return `동명이인이 있습니다: ${names}. 어느 학생을 찾으시나요? (학급이나 학년과 함께 질문해주세요)`;
+                        }
                     }
                     
                     let s = foundStudents[0];
@@ -840,19 +841,77 @@
                     let dept = deptNames[s.cls[1]];
                     let stdStr = `🎓 **${dept} ${s.cls[0]}학년 ${s.cls[2]}반 ${s.num}번 ${s.name}** 학생`;
 
-                    if (isNow || text.includes("수업")) {
+                    let isAskingClass = isNow || text.includes("수업") || text.includes("어디") || text.includes("뭐해") || targetPeriod || targetDay;
+
+                    if (isAskingClass) {
+                        let pToCheck = targetPeriod;
+                        let dToCheck = targetDay;
+                        let isRealTime = false;
+                        
                         let cpInfo = getCurrentPeriod();
-                        let cd = numToDay[new Date().getDay()];
-                        if (!cpInfo || !cd) return `${stdStr}입니다.<br>⏰ 지금은 정규 일과 시간이 아닙니다.`;
-                        
-                        if (cpInfo.status === 'break') return `${stdStr}입니다.<br>☕ 지금은 **쉬는 시간**입니다.`;
-                        if (cpInfo.status === 'lunch') return `${stdStr}입니다.<br>🍚 지금은 **점심시간**입니다.`;
-                        
-                        let clsInfo = classSchedules[s.cls] ? classSchedules[s.cls][`${cd}${cpInfo.p}`] : null;
-                        if (clsInfo && !clsInfo.includes("공강") && clsInfo !== "-") {
-                            return `${stdStr}은(는)<br>⏰ 지금(**${cpInfo.p}교시**) <strong style='color:#fbbf24;'>[${clsInfo.replace(/\n/g, " ")}]</strong> 수업 중입니다.`;
+                        let currentDayStr = numToDay[new Date().getDay()];
+
+                        if (!pToCheck && !dToCheck && isNow) {
+                             if (cpInfo) pToCheck = cpInfo.p;
+                             dToCheck = currentDayStr;
+                             isRealTime = true;
                         } else {
-                            return `${stdStr}은(는)<br>⏰ 지금(**${cpInfo.p}교시**) 정규 수업이 없습니다(공강).`;
+                             if (!dToCheck) dToCheck = currentDayStr; 
+                        }
+
+                        if (!pToCheck || !dToCheck) {
+                            if (!pToCheck && dToCheck) {
+                                // 요일 전체 시간표 요청
+                                let scheduleStr = `${stdStr}의 **${dToCheck}요일** 시간표입니다.<br><br>`;
+                                let hasClass = false;
+                                for(let i=1; i<=7; i++) {
+                                    let cls = classSchedules[s.cls] ? classSchedules[s.cls][`${dToCheck}${i}`] : null;
+                                    if(!cls) {
+                                        teacherSchedules.forEach(t => {
+                                            const cell = t.schedule[`${dToCheck}${i}`] || "";
+                                            if (!isFreePeriod(cell, dToCheck, i, t.name)) {
+                                                const info = parseClassInfo(cell);
+                                                if (info.room === s.cls) cls = `${info.sub} <span style="color:#94a3b8; font-size:0.85rem;">(${t.name})</span>`;
+                                            }
+                                        });
+                                    }
+                                    if(cls && cls.trim() !== "" && cls !== "-" && !cls.includes("공강")) {
+                                        cls = cls.replace(/\n/g, " "); 
+                                        scheduleStr += `• **${i}교시**: ${cls}<br>`;
+                                        hasClass = true;
+                                    }
+                                }
+                                if(!hasClass) scheduleStr += "해당 요일은 정규 수업이 없습니다! 🎉";
+                                return scheduleStr;
+                            }
+                            return `${stdStr}입니다.<br>⏰ 지금은 정규 일과 시간이 아니며, 질문하신 교시를 파악할 수 없습니다.`;
+                        }
+
+                        if (isRealTime && cpInfo) {
+                            if (cpInfo.status === 'break') return `${stdStr}입니다.<br>☕ 지금은 **쉬는 시간**입니다.`;
+                            if (cpInfo.status === 'lunch') return `${stdStr}입니다.<br>🍚 지금은 **점심시간**입니다.`;
+                        }
+                        
+                        let clsInfo = null;
+                        if (Object.keys(classSchedules).length > 0 && classSchedules[s.cls]) {
+                            clsInfo = classSchedules[s.cls][`${dToCheck}${pToCheck}`];
+                        } 
+                        if (!clsInfo) {
+                            teacherSchedules.forEach(t => {
+                                const cell = t.schedule[`${dToCheck}${pToCheck}`] || "";
+                                if (!isFreePeriod(cell, dToCheck, pToCheck, t.name)) {
+                                    const info = parseClassInfo(cell);
+                                    if (info.room === s.cls) clsInfo = info.sub;
+                                }
+                            });
+                        }
+
+                        if (clsInfo && !clsInfo.includes("공강") && clsInfo !== "-") {
+                            let timeLabel = isRealTime ? "지금" : `${dToCheck}요일`;
+                            return `${stdStr}은(는)<br>⏰ ${timeLabel}(**${pToCheck}교시**) <strong style='color:#fbbf24;'>[${clsInfo.replace(/\n/g, " ")}]</strong> 수업입니다.`;
+                        } else {
+                            let timeLabel = isRealTime ? "지금" : `${dToCheck}요일`;
+                            return `${stdStr}은(는)<br>⏰ ${timeLabel}(**${pToCheck}교시**) 정규 수업이 없습니다(공강).`;
                         }
                     } else {
                         return `${stdStr}입니다.`;
@@ -860,7 +919,6 @@
                 }
             }
 
-            // 🤖 3. "지금 전자 2-2 반은 무슨 수업이야?" (실시간 학급 조회)
             if (foundClass && isNow && !foundTeacher) {
                 let cpInfo = getCurrentPeriod();
                 let cd = numToDay[new Date().getDay()];
@@ -877,7 +935,6 @@
                 }
             }
 
-            // 🤖 교사 실시간 조회 (지금 김종호 선생님 무슨 수업이야?)
             if (foundTeacher && isNow) {
                 let cpInfo = getCurrentPeriod();
                 let cd = numToDay[new Date().getDay()];
@@ -894,7 +951,6 @@
                 }
             }
 
-            // 🤖 일반 학급 시간표 조회
             if (foundClass && !foundTeacher) {
                 if (!targetDay) {
                     if (todayNum > 0 && todayNum < 6) targetDay = numToDay[todayNum];
@@ -930,7 +986,6 @@
                 }
             }
 
-            // 🤖 일반 교사 시간표 조회
             if (foundTeacher) {
                 if (!targetDay) {
                     if (todayNum > 0 && todayNum < 6) targetDay = numToDay[todayNum];
@@ -959,9 +1014,13 @@
                 }
             }
 
-            return "무엇을 찾으시나요? 선생님 이름이나 학급명(기계2-1, 전자2-1 등), 혹은 '무엇을 할 수 있지' 라고 질문해주세요.😊";
+            // ⚠️ 로컬 환경 검증 알림
+            let fallbackMsg = "무엇을 찾으시나요? 선생님 이름이나 학급명(전자2-1 등)을 포함해서 질문해주세요.😊";
+            if (studentDB.length === 0) {
+                fallbackMsg += "<br><br><span style='font-size:0.8rem; color:#fca5a5;'>※ 학생 검색 기능은 인터넷(GitHub) 환경에 명렬표가 업로드되어야 활성화됩니다. (내 PC 바탕화면 실행 시 불가)</span>";
+            }
+            return fallbackMsg;
         }
-
 
         function showDevPopup() {
             document.getElementById('devModal').style.display = 'flex';
@@ -974,7 +1033,7 @@
         }
 
         function loadSchoolEvents() {
-            fetch('events.xlsx')
+            fetch('events.xlsx?t=' + new Date().getTime())
                 .then(response => {
                     if (!response.ok) throw new Error("학사일정 파일 없음");
                     return response.arrayBuffer();
@@ -1009,6 +1068,79 @@
                     });
                 })
                 .catch(error => {});
+        }
+
+        // 🔥 학생 명렬표 전용 GitHub 자동 다운로드 로직 (어떤 탭 이름이든 싹 다 스캔)
+        function loadRoster() {
+            fetch('roster.xlsx?t=' + new Date().getTime())
+                .then(response => {
+                    if (!response.ok) throw new Error("명렬표 파일 없음");
+                    return response.arrayBuffer();
+                })
+                .then(data => {
+                    const workbook = XLSX.read(new Uint8Array(data), { type: 'array' });
+                    studentDB = []; 
+                    
+                    workbook.SheetNames.forEach(sheetName => {
+                        const sheet = workbook.Sheets[sheetName];
+                        const raw = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "" });
+                        
+                        let classCols = {};
+                        for(let r = 0; r < Math.min(10, raw.length); r++) {
+                            for(let c = 0; c < raw[r].length; c++) {
+                                let cellVal = String(raw[r][c]).trim();
+                                if (!cellVal) continue;
+
+                                let normClass = findClassInText(cellVal);
+                                if (!normClass && sheetName.match(/[1-3]\s*학년/)) {
+                                    normClass = findClassInText(sheetName.match(/([1-3])/)[1] + "학년 " + cellVal);
+                                }
+
+                                if (normClass && !classCols[normClass]) {
+                                    for (let lookR = r; lookR <= r + 3; lookR++) {
+                                        if (lookR >= raw.length) break;
+                                        for (let lookC = Math.max(0, c - 2); lookC <= c + 3; lookC++) {
+                                            let headerVal = String(raw[lookR][lookC]).trim();
+                                            if (headerVal === "성명" || headerVal === "이름") {
+                                                let numCol = lookC - 1;
+                                                for(let nc = Math.max(0, lookC - 2); nc <= lookC + 1; nc++) {
+                                                    if (String(raw[lookR][nc]).trim() === "번호") {
+                                                        numCol = nc; break;
+                                                    }
+                                                }
+                                                classCols[normClass] = { nameCol: lookC, numCol: numCol, startRow: lookR + 1 };
+                                                break;
+                                            }
+                                        }
+                                        if (classCols[normClass]) break;
+                                    }
+                                }
+                            }
+                        }
+
+                        for (let cls in classCols) {
+                            let info = classCols[cls];
+                            for (let r = info.startRow; r < raw.length; r++) {
+                                if (!raw[r]) continue;
+                                let sName = String(raw[r][info.nameCol] || "").trim();
+                                let sNumRaw = String(raw[r][info.numCol] || "").trim();
+                                
+                                if (sName === "남" || sName === "여" || sName.includes("합계")) continue; 
+
+                                let cleanName = sName.replace(/[^가-힣a-zA-Z]/g, ""); 
+                                let sNum = sNumRaw.replace(/[^0-9]/g, "");
+
+                                if (cleanName.length >= 2) {
+                                    studentDB.push({ name: cleanName, cls: cls, num: sNum });
+                                }
+                            }
+                        }
+                    });
+                    console.log("깃허브 명렬표(roster.xlsx) 자동 로드 완료:", studentDB.length, "명");
+                })
+                .catch(error => {
+                    console.log("깃허브에 roster.xlsx 파일이 없습니다.");
+                });
         }
 
         function addDateInput() {
@@ -1051,21 +1183,19 @@
             }
         }
 
-        function saveToStorage(teacherData, eventsData, classData, studentData) { 
+        function saveToStorage(teacherData, classData) { 
             localStorage.setItem('schoolTimetableData', JSON.stringify(teacherData)); 
             if(classData) localStorage.setItem('schoolClassData', JSON.stringify(classData));
-            if(studentData) localStorage.setItem('schoolStudentData', JSON.stringify(studentData));
         }
 
         function loadFromStorage() {
             const savedData = localStorage.getItem('schoolTimetableData');
             const savedClass = localStorage.getItem('schoolClassData');
-            const savedStudents = localStorage.getItem('schoolStudentData');
+            
             if (savedData) {
                 try {
                     teacherSchedules = JSON.parse(savedData);
                     if(savedClass) classSchedules = JSON.parse(savedClass);
-                    if(savedStudents) studentDB = JSON.parse(savedStudents);
                     
                     uploadLabel.innerText = `📁 이전에 업로드한 시간표 자동 로드 완료`;
                     uploadLabel.classList.add('loaded');
@@ -1079,7 +1209,6 @@
             if(confirm("기억된 시간표 데이터를 초기화하시겠습니까?")) {
                 localStorage.removeItem('schoolTimetableData');
                 localStorage.removeItem('schoolClassData');
-                localStorage.removeItem('schoolStudentData');
                 location.reload();
             }
         }
@@ -1098,9 +1227,7 @@
 
         function parseSchoolExcel(workbook, fileName) {
             classSchedules = {}; 
-            studentDB = []; 
 
-            // 🔥 1. 학사일정 탭 파싱
             const eventSheetName = workbook.SheetNames.find(name => name.includes("학사일정") || name.includes("행사") || name.includes("제외"));
             if (eventSheetName) {
                 schoolEvents = {};
@@ -1123,53 +1250,6 @@
                 });
             }
 
-            // 🔥 2. 명렬표(학생 데이터) 탭 자동 학습
-            workbook.SheetNames.forEach(sheetName => {
-                if (sheetName.includes("명렬표")) {
-                    const sheet = workbook.Sheets[sheetName];
-                    const raw = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "" });
-                    
-                    let classCols = {};
-                    for(let r = 0; r < Math.min(5, raw.length); r++) {
-                        for(let c = 0; c < raw[r].length; c++) {
-                            let val = String(raw[r][c]).trim();
-                            let normClass = findClassInText(val);
-                            if(!normClass && sheetName.match(/([1-3])\s*학년/)) {
-                                normClass = findClassInText(sheetName.match(/([1-3])/)[1] + "학년 " + val);
-                            }
-                            if (normClass) {
-                                for(let lookR = r; lookR <= r+2; lookR++) {
-                                    if (lookR >= raw.length) break;
-                                    for(let lookC = Math.max(0, c-1); lookC <= c+2; lookC++) {
-                                        if(String(raw[lookR][lookC]).trim() === "성명" || String(raw[lookR][lookC]).trim() === "이름") {
-                                            classCols[normClass] = { nameCol: lookC, numCol: lookC - 1, startRow: lookR + 1 };
-                                            break;
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    for (let cls in classCols) {
-                        let nCol = classCols[cls].nameCol;
-                        let numCol = classCols[cls].numCol;
-                        let sRow = classCols[cls].startRow;
-                        
-                        for (let r = sRow; r < raw.length; r++) {
-                            let sName = String(raw[r][nCol] || "").trim();
-                            let cleanName = sName.replace(/[^가-힣]/g, ""); 
-                            let sNum = String(raw[r][numCol] || "").replace(/[^0-9]/g, "");
-                            
-                            if (cleanName.length >= 2 && sNum.length > 0) {
-                                studentDB.push({ name: cleanName, cls: cls, num: sNum });
-                            }
-                        }
-                    }
-                }
-            });
-
-            // 🔥 3. '학년', '학급' 탭 파싱하여 classSchedules에 저장! (연강 셀 완벽 병합 처리)
             workbook.SheetNames.forEach(sheetName => {
                 if (sheetName.includes("학년") || sheetName.includes("학급") || sheetName.includes("반")) {
                     const sheet = workbook.Sheets[sheetName];
@@ -1211,7 +1291,6 @@
                                     
                                     let currentPeriod = 0;
                                     
-                                    // r+1행부터 아래로 스캔
                                     for (let scanR = r + 1; scanR < raw.length; scanR++) { 
                                         const scanRow = raw[scanR];
                                         if (String(scanRow[c] || "").trim() === "월" && String(scanRow[c+1] || "").trim() === "화") break;
@@ -1240,7 +1319,6 @@
                                         }
                                     }
                                     
-                                    // 병합 셀 상속 (수직 상속) - 코스/순환 수업 완벽 복제
                                     for (let p = 1; p <= 7; p++) {
                                         ["월", "화", "수", "목", "금"].forEach(day => {
                                             let text = periodData[p][day].replace(/\n\n/g, "\n").replace(/^\n|\n$/g, "").trim();
@@ -1263,7 +1341,6 @@
                 }
             });
 
-            // --- 4. 기존 교사 시간표 파싱 ---
             let targetSheetName = workbook.SheetNames[0]; 
             for (let name of workbook.SheetNames) {
                 if (name.includes("전체") || name.includes("교사") || name.includes("시간표")) {
@@ -1347,7 +1424,7 @@
                 return alert("교사 시간표 데이터를 추출하지 못했습니다. 원본 파일 양식을 확인해주세요.");
             }
 
-            saveToStorage(teacherSchedules, schoolEvents, classSchedules, studentDB);
+            saveToStorage(teacherSchedules, classSchedules);
             
             if (fileName) {
                 uploadLabel.innerText = `📁 업로드 성공: ${fileName}`;
