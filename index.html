@@ -72,6 +72,15 @@
         .file-input-btn:hover { border-color: var(--primary); color: var(--primary); background: rgba(56, 189, 248, 0.05); }
         .file-input-btn.loaded { border-color: var(--success); color: var(--success); background: rgba(16, 185, 129, 0.08); border-style: solid; }
 
+        /* 🔥 깃허브 연동 상태창 디자인 */
+        .github-status-box {
+            margin-top: 10px; padding: 12px; border-radius: 8px; font-size: 0.85rem; color: var(--text-dim);
+            background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.05); width: 100%; box-sizing: border-box;
+            display: flex; flex-direction: column; gap: 6px;
+        }
+        .github-status-box strong { color: white; font-size: 0.9rem; margin-bottom: 4px; display: block; text-align: center;}
+        .status-row { display: flex; justify-content: space-between; align-items: center; }
+
         .form-group { display: flex; flex-direction: column; gap: 8px; margin-bottom: 18px; }
         .form-group label { font-weight: 700; color: var(--text-dim); font-size: 0.9rem; }
         select, input[type="date"] { 
@@ -365,6 +374,18 @@
                         </label>
                         <input type="file" id="excelUpload" accept=".xlsx, .xls, .csv" style="display:none;">
                     </div>
+                    <!-- 🔥 깃허브 연동 상태 알림판 추가 -->
+                    <div class="github-status-box" id="githubStatusBox">
+                        <strong>☁️ 클라우드(GitHub) 자동 연동</strong>
+                        <div class="status-row">
+                            <span>🗓️ 학사일정 (events.xlsx)</span>
+                            <span id="eventStatus" style="color:var(--text-dim);">대기 중...</span>
+                        </div>
+                        <div class="status-row">
+                            <span>🎓 명렬표 (roster.xlsx)</span>
+                            <span id="rosterStatus" style="color:var(--text-dim);">대기 중...</span>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -477,12 +498,12 @@
             <div class="chat-msg bot">
                 안녕하세요! T-Bot 입니다.<br><br>
                 선생님 성함, 학급명(기계2-1 등), 요일, 시간, 특정 학생 이름(명렬표 연동)까지 무엇이든 편하게 물어보세요!<br>
-                <span style="font-size:0.8rem; color:#bae6fd;">(예: "오늘 2교시 빈 선생님?", "전자2-1 오늘 시간표", "홍길동 지금 수업 뭐야?", "2기2 소통 누구 선생님?")</span>
+                <span style="font-size:0.8rem; color:#bae6fd;">(예: "오늘 2교시 수업 없는 쌤?", "전자2-1 오늘 시간표", "홍길동 지금 무슨 수업이지?", "2기2 소통 누구 선생님?")</span>
             </div>
         </div>
         <div class="chat-input-area">
-            <!-- 🔥 오토포커스 제거, 클릭 시 문구 싹 지워지는 완벽 로직 적용 -->
-            <input type="text" id="chatInput" value="넌 무엇을 할 수 있지?" onmousedown="clearInitialText(this)" onkeydown="clearInitialText(this)" onkeypress="if(event.key === 'Enter') handleChat()">
+            <!-- 🔥 입력창 클릭 시 문구 싹 지워지는 로직 -->
+            <input type="text" id="chatInput" value="넌 무엇을 할 수 있지?" onfocus="clearInitialText(this)" onkeypress="if(event.key === 'Enter') handleChat()">
             <button onclick="handleChat()">전송</button>
         </div>
     </div>
@@ -562,11 +583,10 @@
         document.addEventListener('DOMContentLoaded', () => {
             addDateInput();
             loadSchoolEvents(); 
-            loadRoster(); // 🔥 깃허브에서 명렬표(roster.xlsx)를 조용히 자동 로드
+            loadRoster(); 
             loadFromStorage();  
         });
 
-        // 🔥 채팅창 초기 문구 지우기 로직 (자동 포커스 해제)
         let isInitialChat = true;
         function clearInitialText(el) {
             if (isInitialChat && el.value === "넌 무엇을 할 수 있지?") {
@@ -575,7 +595,6 @@
             }
         }
 
-        // 🔥 일과 시간표 로직 (금요일 단축 및 점심/쉬는시간 판별)
         function getCurrentPeriod() {
             const now = new Date();
             const day = now.getDay();
@@ -619,7 +638,6 @@
             const win = document.getElementById('chatbotWindow');
             if (win.style.display === 'none' || win.style.display === '') {
                 win.style.display = 'flex';
-                // focus 제거: 문구가 바로 지워지는 것을 방지함
             } else {
                 win.style.display = 'none';
             }
@@ -709,7 +727,6 @@
 
         // 🔥 스마트 파싱 챗봇 종합 엔진
         function processChat(text) {
-            // 🤖 [도움말 기능]
             if (text.replace(/\s+/g, "").includes("무엇을할수있") || text.includes("기능") || text.includes("도움말") || text.includes("뭐해") || text === "넌 무엇을 할 수 있지?") {
                 return `🤖 **T-Bot 기능 안내**<br><br>다음과 같이 편하게 물어보시면 다 대답해 드립니다!<br>• 👩‍🏫 **교사 시간표**: "김종호 선생님 오늘 시간표"<br>• 🏫 **학급 시간표**: "전자2-1 지금 무슨 수업해?"<br>• 🎓 **학생 찾기**: "권영은 소속이 어디야?", "홍길동 지금 수업 뭐야?"<br>• 🔍 **조건 검색**: "오늘 2교시 수업 없는 쌤", "2기2 소통 선생님 누구?"`;
             }
@@ -851,9 +868,9 @@
                         let cpInfo = getCurrentPeriod();
                         let currentDayStr = numToDay[new Date().getDay()];
 
-                        if (!pToCheck && !dToCheck && isNow) {
+                        if (!pToCheck) {
                              if (cpInfo) pToCheck = cpInfo.p;
-                             dToCheck = currentDayStr;
+                             if (!dToCheck) dToCheck = currentDayStr;
                              isRealTime = true;
                         } else {
                              if (!dToCheck) dToCheck = currentDayStr; 
@@ -861,7 +878,6 @@
 
                         if (!pToCheck || !dToCheck) {
                             if (!pToCheck && dToCheck) {
-                                // 요일 전체 시간표 요청
                                 let scheduleStr = `${stdStr}의 **${dToCheck}요일** 시간표입니다.<br><br>`;
                                 let hasClass = false;
                                 for(let i=1; i<=7; i++) {
@@ -1017,7 +1033,7 @@
             // ⚠️ 로컬 환경 검증 알림
             let fallbackMsg = "무엇을 찾으시나요? 선생님 이름이나 학급명(전자2-1 등)을 포함해서 질문해주세요.😊";
             if (studentDB.length === 0) {
-                fallbackMsg += "<br><br><span style='font-size:0.8rem; color:#fca5a5;'>※ 학생 검색 기능은 인터넷(GitHub) 환경에 명렬표가 업로드되어야 활성화됩니다. (내 PC 바탕화면 실행 시 불가)</span>";
+                fallbackMsg += "<br><br><span style='font-size:0.8rem; color:#fca5a5;'>※ 학생 검색 기능은 인터넷(GitHub) 환경에 명렬표(roster.xlsx)가 업로드되어야 활성화됩니다. (현재 대기 중이거나 파일 없음)</span>";
             }
             return fallbackMsg;
         }
@@ -1066,11 +1082,14 @@
                             }
                         }
                     });
+                    document.getElementById('eventStatus').innerHTML = `<span style="color:var(--success); font-weight:bold;">연동 완료</span>`;
                 })
-                .catch(error => {});
+                .catch(error => {
+                    document.getElementById('eventStatus').innerHTML = `<span style="color:var(--warning);">파일 없음 (events.xlsx)</span>`;
+                });
         }
 
-        // 🔥 학생 명렬표 전용 GitHub 자동 다운로드 로직 (어떤 탭 이름이든 싹 다 스캔)
+        // 🔥 학생 명렬표 전용 GitHub 자동 다운로드 로직
         function loadRoster() {
             fetch('roster.xlsx?t=' + new Date().getTime())
                 .then(response => {
@@ -1136,10 +1155,10 @@
                             }
                         }
                     });
-                    console.log("깃허브 명렬표(roster.xlsx) 자동 로드 완료:", studentDB.length, "명");
+                    document.getElementById('rosterStatus').innerHTML = `<span style="color:var(--success); font-weight:bold;">연동 완료 (${studentDB.length}명)</span>`;
                 })
                 .catch(error => {
-                    console.log("깃허브에 roster.xlsx 파일이 없습니다.");
+                    document.getElementById('rosterStatus').innerHTML = `<span style="color:var(--warning);">파일 없음 (roster.xlsx)</span>`;
                 });
         }
 
