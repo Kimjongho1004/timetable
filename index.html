@@ -662,7 +662,6 @@
             }, 400); 
         }
 
-        // 🔥 "의료전기전자과" 오류 원천 차단된 정규식 파싱 엔진
         function findClassInText(text) {
             const norm = text.replace(/과/g, "").replace(/ /g, "");
             
@@ -673,8 +672,8 @@
             if (deptMidMatch) {
                 let deptStr = deptMidMatch[2];
                 let dept = "";
-                if (deptStr.includes("전")) dept = "전";
-                else if (deptStr.includes("기")) dept = "기";
+                if (deptStr.includes("기")) dept = "기";
+                else if (deptStr.includes("전")) dept = "전";
                 else if (deptStr.includes("바")) dept = "바";
                 if (dept) return `${deptMidMatch[1]}${dept}${deptMidMatch[3]}`;
             }
@@ -685,8 +684,8 @@
                 let grade = deptFirstMatch[2];
                 let cls = deptFirstMatch[3];
                 let dept = "";
-                if (deptStr.includes("전")) dept = "전";
-                else if (deptStr.includes("기")) dept = "기";
+                if (deptStr.includes("기")) dept = "기";
+                else if (deptStr.includes("전")) dept = "전";
                 else if (deptStr.includes("바")) dept = "바";
                 if (dept) return `${grade}${dept}${cls}`;
             }
@@ -697,8 +696,8 @@
                 let cls = gradeFirstMatch[2];
                 let deptStr = gradeFirstMatch[3];
                 let dept = "";
-                if (deptStr.includes("전")) dept = "전";
-                else if (deptStr.includes("기")) dept = "기";
+                if (deptStr.includes("기")) dept = "기";
+                else if (deptStr.includes("전")) dept = "전";
                 else if (deptStr.includes("바")) dept = "바";
                 if (dept) return `${grade}${dept}${cls}`;
             }
@@ -719,6 +718,31 @@
             if (grade && dept && cls) return `${grade}${dept}${cls}`;
 
             return null;
+        }
+
+        // 🔥 X-ray 셀 병합 처리기 (모든 병합된 셀에 값 복제)
+        function resolveMerges(sheet, raw) {
+            if (sheet["!merges"]) {
+                sheet["!merges"].forEach(range => {
+                    let sr = range.s.r;
+                    let sc = range.s.c;
+                    let er = range.e.r;
+                    let ec = range.e.c;
+                    if (sr >= raw.length) return;
+                    if (!raw[sr]) return;
+                    
+                    let startVal = raw[sr][sc];
+                    if (startVal !== undefined && startVal !== null && startVal !== "") {
+                        for (let r = sr; r <= er; r++) {
+                            if (r >= raw.length) raw[r] = []; 
+                            if (!raw[r]) raw[r] = [];
+                            for (let c = sc; c <= ec; c++) {
+                                raw[r][c] = startVal;
+                            }
+                        }
+                    }
+                });
+            }
         }
 
         function getClassSubject(className, day, period) {
@@ -898,61 +922,60 @@
 
                         if (!pToCheck || !dToCheck) {
                             if (!pToCheck && dToCheck) {
-                                let fullSchedHtml = `<br><br>👇 **${s.name} 학생의 오늘(${dToCheck}요일) 전체 수업 시간표는 아래와 같습니다.**<br><div style="background:rgba(0,0,0,0.2); padding:12px; border-radius:8px; margin-top:8px; line-height:1.8;">`;
+                                let scheduleRows = "";
                                 let hasClass = false;
                                 for(let i=1; i<=7; i++) {
                                     let cls = getClassSubject(s.cls, dToCheck, i);
                                     if(cls) {
-                                        fullSchedHtml += `• **${i}교시**: ${cls}<br>`;
+                                        scheduleRows += `• **${i}교시**: ${cls}<br>`;
                                         hasClass = true;
                                     } else {
-                                        fullSchedHtml += `• **${i}교시**: <span style="color:#94a3b8;">공강</span><br>`;
+                                        scheduleRows += `• **${i}교시**: <span style="color:#94a3b8;">공강</span><br>`;
                                     }
                                 }
-                                fullSchedHtml += `</div>`;
-                                if (!hasClass) fullSchedHtml = `<br><br>오늘(${dToCheck}요일)은 배정된 정규 수업이 없습니다! 🎉`;
+                                if (!hasClass) scheduleRows = `해당 요일(${dToCheck}요일)은 배정된 정규 수업이 없습니다! 🎉`;
+                                else scheduleRows = `<div style="background:rgba(0,0,0,0.2); padding:12px; border-radius:8px; margin-top:8px; line-height:1.8;">${scheduleRows}</div>`;
                                 
-                                return `${stdStr}${fullSchedHtml}`;
+                                return `${stdStr}<br><br>👇 **${s.name} 학생**의 ${dToCheck}요일 전체 수업 시간표는 아래와 같습니다.${scheduleRows}`;
                             }
-                            return `${stdStr}<br>⏰ 지금은 정규 일과 시간이 아니며, 질문하신 교시를 파악할 수 없습니다.`;
+                            return `${stdStr}<br><br>⏰ 지금은 정규 일과 시간이 아니며, 질문하신 교시를 파악할 수 없습니다.`;
                         }
 
-                        let fullSchedHtml = `<br><br>👇 **${s.name} 학생의 오늘(${dToCheck}요일) 전체 수업 시간표는 아래와 같습니다.**<br><div style="background:rgba(0,0,0,0.2); padding:12px; border-radius:8px; margin-top:8px; line-height:1.8;">`;
+                        let scheduleRows = "";
                         let hasClass = false;
                         for(let i=1; i<=7; i++) {
                             let cls = getClassSubject(s.cls, dToCheck, i);
                             if(cls) {
-                                fullSchedHtml += `• **${i}교시**: ${cls}<br>`;
+                                scheduleRows += `• **${i}교시**: ${cls}<br>`;
                                 hasClass = true;
                             } else {
-                                fullSchedHtml += `• **${i}교시**: <span style="color:#94a3b8;">공강</span><br>`;
+                                scheduleRows += `• **${i}교시**: <span style="color:#94a3b8;">공강</span><br>`;
                             }
                         }
-                        fullSchedHtml += `</div>`;
-                        if (!hasClass) fullSchedHtml = `<br><br>오늘(${dToCheck}요일)은 배정된 정규 수업이 없습니다! 🎉`;
+                        if (!hasClass) scheduleRows = `해당 요일(${dToCheck}요일)은 배정된 정규 수업이 없습니다! 🎉`;
+                        else scheduleRows = `<div style="background:rgba(0,0,0,0.2); padding:12px; border-radius:8px; margin-top:8px; line-height:1.8;">${scheduleRows}</div>`;
 
                         if (isRealTime && cpInfo) {
                             let statusMsg = "";
                             if (cpInfo.status === 'break') {
-                                statusMsg = `☕ 지금은 **쉬는 시간**입니다.`;
+                                statusMsg = `☕ **현재는 쉬는 시간**입니다.`;
                             } else if (cpInfo.status === 'lunch') {
-                                statusMsg = `🍚 지금은 **점심시간**입니다.`;
+                                statusMsg = `🍚 **현재는 점심시간**입니다.`;
                             } else {
                                 let clsInfo = getClassSubject(s.cls, currentDayStr, cpInfo.p);
                                 if (clsInfo) {
-                                    statusMsg = `⏰ 지금은 **${cpInfo.p}교시 <strong style='color:#fbbf24;'>[${clsInfo}]</strong>** 수업입니다.`;
+                                    statusMsg = `⏰ **현재 ${cpInfo.p}교시이며 <span style='color:#fbbf24;'>${clsInfo}</span>** 입니다.`;
                                 } else {
-                                    statusMsg = `⏰ 지금은 **${cpInfo.p}교시** 공강입니다.`;
+                                    statusMsg = `⏰ **현재 ${cpInfo.p}교시**이며 정규 수업이 없습니다(공강).`;
                                 }
                             }
-                            return `${stdStr}<br>${statusMsg}${fullSchedHtml}`;
+                            let schedHeader = `<br><br>👇 참고로 **${s.name} 학생**의 오늘(${dToCheck}요일) 전체 수업 시간표는 아래와 같습니다.`;
+                            return `${stdStr}<br><br>${statusMsg}${schedHeader}${scheduleRows}`;
                         } else if (pToCheck) {
                             let clsInfo = getClassSubject(s.cls, dToCheck, pToCheck);
-                            if (clsInfo) {
-                                return `${stdStr}<br>⏰ ${dToCheck}요일(**${pToCheck}교시**) <strong style='color:#fbbf24;'>[${clsInfo}]</strong> 수업입니다.${fullSchedHtml}`;
-                            } else {
-                                return `${stdStr}<br>⏰ ${dToCheck}요일(**${pToCheck}교시**) 정규 수업이 없습니다(공강).${fullSchedHtml}`;
-                            }
+                            let statusMsg = clsInfo ? `⏰ ${dToCheck}요일 **${pToCheck}교시**는 <span style='color:#fbbf24;'>${clsInfo}</span> 수업입니다.` : `⏰ ${dToCheck}요일 **${pToCheck}교시**는 정규 수업이 없습니다(공강).`;
+                            let schedHeader = `<br><br>👇 참고로 **${s.name} 학생**의 ${dToCheck}요일 전체 수업 시간표는 아래와 같습니다.`;
+                            return `${stdStr}<br><br>${statusMsg}${schedHeader}${scheduleRows}`;
                         }
                     } else {
                         return `${stdStr} 무엇이 궁금하신가요?`;
@@ -961,101 +984,101 @@
             }
 
             if (foundClass && !foundTeacher) {
-                let currentDayStr = numToDay[new Date().getDay()];
+                let currentDayStr = numToDay[new Date().getDay()] || "월";
                 let cpInfo = getCurrentPeriod();
                 let dToCheck = targetDay || currentDayStr;
 
                 const deptNames = { "전": "의료전기전자과", "기": "의료기계과", "바": "바이오의약과" };
                 const fullClassName = `${foundClass[0]}학년 ${foundClass[2]}반 ${deptNames[foundClass[1]]}`;
+                let stdStr = `🏫 **${fullClassName}** 안내입니다.`;
 
-                let fullSchedHtml = `<br><br>👇 **${foundClass}반의 오늘(${dToCheck}요일) 전체 시간표는 아래와 같습니다.**<br><div style="background:rgba(0,0,0,0.2); padding:12px; border-radius:8px; margin-top:8px; line-height:1.8;">`;
+                let scheduleRows = "";
                 let hasClass = false;
                 for(let i=1; i<=7; i++) {
                     let cls = getClassSubject(foundClass, dToCheck, i);
                     if(cls) {
-                        fullSchedHtml += `• **${i}교시**: ${cls}<br>`;
+                        scheduleRows += `• **${i}교시**: ${cls}<br>`;
                         hasClass = true;
                     } else {
-                        fullSchedHtml += `• **${i}교시**: <span style="color:#94a3b8;">공강</span><br>`;
+                        scheduleRows += `• **${i}교시**: <span style="color:#94a3b8;">공강</span><br>`;
                     }
                 }
-                fullSchedHtml += `</div>`;
-                if (!hasClass) fullSchedHtml = `<br><br>오늘(${dToCheck}요일)은 배정된 정규 수업이 없습니다! 🎉`;
+                if (!hasClass) scheduleRows = `해당 요일(${dToCheck}요일)은 배정된 정규 수업이 없습니다! 🎉`;
+                else scheduleRows = `<div style="background:rgba(0,0,0,0.2); padding:12px; border-radius:8px; margin-top:8px; line-height:1.8;">${scheduleRows}</div>`;
 
                 if (isNow) {
                     let statusMsg = "";
-                    if (!cpInfo || !currentDayStr || currentDayStr === "토" || currentDayStr === "일") {
-                        statusMsg = `⏰ 지금은 정규 일과 시간이 아닙니다.`;
+                    if (!cpInfo || !numToDay[new Date().getDay()]) {
+                        statusMsg = `⏰ 현재는 정규 일과 시간이 아닙니다.`;
                     } else if (cpInfo.status === 'break') {
-                        statusMsg = `☕ 지금은 **쉬는 시간**입니다.`;
+                        statusMsg = `☕ **현재는 쉬는 시간**입니다.`;
                     } else if (cpInfo.status === 'lunch') {
-                        statusMsg = `🍚 지금은 **점심시간**입니다.`;
+                        statusMsg = `🍚 **현재는 점심시간**입니다.`;
                     } else {
                         let clsInfo = getClassSubject(foundClass, currentDayStr, cpInfo.p);
-                        if (clsInfo) {
-                            statusMsg = `⏰ 지금은 **${cpInfo.p}교시 <strong style='color:#fbbf24;'>[${clsInfo}]</strong>** 수업입니다.`;
-                        } else {
-                            statusMsg = `⏰ 지금은 **${cpInfo.p}교시** 공강입니다.`;
-                        }
+                        if (clsInfo) statusMsg = `⏰ **현재 ${cpInfo.p}교시이며 <span style='color:#fbbf24;'>${clsInfo}</span>** 입니다.`;
+                        else statusMsg = `⏰ **현재 ${cpInfo.p}교시**이며 정규 수업이 없습니다(공강).`;
                     }
-                    return `🏫 **${fullClassName}** 안내입니다.<br>${statusMsg}${fullSchedHtml}`;
+                    let schedHeader = `<br><br>👇 참고로 **${foundClass}반**의 오늘(${dToCheck}요일) 전체 시간표는 아래와 같습니다.`;
+                    return `${stdStr}<br><br>${statusMsg}${schedHeader}${scheduleRows}`;
                 } else if (targetPeriod) {
                     let clsInfo = getClassSubject(foundClass, dToCheck, targetPeriod);
-                    if (clsInfo) {
-                        return `🏫 **${fullClassName}** 안내입니다.<br>⏰ ${dToCheck}요일(**${targetPeriod}교시**) <strong style='color:#fbbf24;'>[${clsInfo}]</strong> 수업입니다.${fullSchedHtml}`;
-                    } else {
-                        return `🏫 **${fullClassName}** 안내입니다.<br>⏰ ${dToCheck}요일(**${targetPeriod}교시**) 정규 수업이 없습니다(공강).${fullSchedHtml}`;
-                    }
+                    let statusMsg = clsInfo ? `⏰ ${dToCheck}요일 **${targetPeriod}교시**는 <span style='color:#fbbf24;'>${clsInfo}</span> 수업입니다.` : `⏰ ${dToCheck}요일 **${targetPeriod}교시**는 정규 수업이 없습니다(공강).`;
+                    let schedHeader = `<br><br>👇 참고로 **${foundClass}반**의 ${dToCheck}요일 전체 시간표는 아래와 같습니다.`;
+                    return `${stdStr}<br><br>${statusMsg}${schedHeader}${scheduleRows}`;
                 } else {
-                    return `🏫 **${fullClassName}** 안내입니다.${fullSchedHtml}`;
+                    let schedHeader = `<br><br>👇 **${foundClass}반**의 ${dToCheck}요일 전체 시간표는 아래와 같습니다.`;
+                    return `${stdStr}${schedHeader}${scheduleRows}`;
                 }
             }
 
             if (foundTeacher) {
-                let currentDayStr = numToDay[new Date().getDay()];
+                let currentDayStr = numToDay[new Date().getDay()] || "월";
                 let cpInfo = getCurrentPeriod();
                 let dToCheck = targetDay || currentDayStr;
 
-                let fullSchedHtml = `<br><br>👇 **${foundTeacher.name} 선생님의 오늘(${dToCheck}요일) 전체 시간표는 아래와 같습니다.**<br><div style="background:rgba(0,0,0,0.2); padding:12px; border-radius:8px; margin-top:8px; line-height:1.8;">`;
+                let stdStr = `👨‍🏫 **${foundTeacher.name}** 선생님 안내입니다.`;
+
+                let scheduleRows = "";
                 let hasClass = false;
                 for(let i=1; i<=7; i++) {
                     let cls = foundTeacher.schedule[`${dToCheck}${i}`];
                     if(!isFreePeriod(cls, dToCheck, i, foundTeacher.name)) {
-                        fullSchedHtml += `• **${i}교시**: ${cls}<br>`;
+                        scheduleRows += `• **${i}교시**: ${cls}<br>`;
                         hasClass = true;
                     } else {
-                        fullSchedHtml += `• **${i}교시**: <span style="color:#94a3b8;">공강</span><br>`;
+                        scheduleRows += `• **${i}교시**: <span style="color:#94a3b8;">공강</span><br>`;
                     }
                 }
-                fullSchedHtml += `</div>`;
-                if (!hasClass) fullSchedHtml = `<br><br>오늘(${dToCheck}요일)은 수업이 없는 공강일입니다! 🎉`;
+                if (!hasClass) scheduleRows = `해당 요일(${dToCheck}요일)은 수업이 없는 공강일입니다! 🎉`;
+                else scheduleRows = `<div style="background:rgba(0,0,0,0.2); padding:12px; border-radius:8px; margin-top:8px; line-height:1.8;">${scheduleRows}</div>`;
 
                 if (isNow) {
                     let statusMsg = "";
-                    if (!cpInfo || !currentDayStr || currentDayStr === "토" || currentDayStr === "일") {
-                        statusMsg = `⏰ 지금은 정규 일과 시간이 아닙니다.`;
+                    if (!cpInfo || !numToDay[new Date().getDay()]) {
+                        statusMsg = `⏰ 현재는 정규 일과 시간이 아닙니다.`;
                     } else if (cpInfo.status === 'break') {
-                        statusMsg = `☕ 지금은 **쉬는 시간**입니다.`;
+                        statusMsg = `☕ **현재는 쉬는 시간**입니다.`;
                     } else if (cpInfo.status === 'lunch') {
-                        statusMsg = `🍚 지금은 **점심시간**입니다.`;
+                        statusMsg = `🍚 **현재는 점심시간**입니다.`;
                     } else {
                         let cls = foundTeacher.schedule[`${currentDayStr}${cpInfo.p}`];
                         if (!isFreePeriod(cls, currentDayStr, cpInfo.p, foundTeacher.name)) {
-                            statusMsg = `⏰ 지금은 **${cpInfo.p}교시 <strong style='color:#fbbf24;'>[${cls}]</strong>** 수업입니다. 👨‍🏫`;
+                            statusMsg = `⏰ **현재 ${cpInfo.p}교시이며 <span style='color:#fbbf24;'>${cls}</span>** 입니다.`;
                         } else {
-                            statusMsg = `⏰ 지금은 **${cpInfo.p}교시** 공강/업무 시간입니다.`;
+                            statusMsg = `⏰ **현재 ${cpInfo.p}교시**이며 공강/업무 시간입니다.`;
                         }
                     }
-                    return `👨‍🏫 **${foundTeacher.name}** 선생님 안내입니다.<br>${statusMsg}${fullSchedHtml}`;
+                    let schedHeader = `<br><br>👇 참고로 **${foundTeacher.name} 선생님**의 오늘(${dToCheck}요일) 전체 시간표는 아래와 같습니다.`;
+                    return `${stdStr}<br><br>${statusMsg}${schedHeader}${scheduleRows}`;
                 } else if (targetPeriod) {
                     let cls = foundTeacher.schedule[`${dToCheck}${targetPeriod}`];
-                    if (!isFreePeriod(cls, dToCheck, targetPeriod, foundTeacher.name)) {
-                        return `👨‍🏫 **${foundTeacher.name}** 선생님 안내입니다.<br>⏰ ${dToCheck}요일(**${targetPeriod}교시**) <strong style='color:#fbbf24;'>[${cls}]</strong> 수업입니다.${fullSchedHtml}`;
-                    } else {
-                        return `👨‍🏫 **${foundTeacher.name}** 선생님 안내입니다.<br>⏰ ${dToCheck}요일(**${targetPeriod}교시**) 수업이 없습니다(공강).${fullSchedHtml}`;
-                    }
+                    let statusMsg = !isFreePeriod(cls, dToCheck, targetPeriod, foundTeacher.name) ? `⏰ ${dToCheck}요일 **${targetPeriod}교시**는 <span style='color:#fbbf24;'>${cls}</span> 수업입니다.` : `⏰ ${dToCheck}요일 **${targetPeriod}교시**는 수업이 없습니다(공강).`;
+                    let schedHeader = `<br><br>👇 참고로 **${foundTeacher.name} 선생님**의 ${dToCheck}요일 전체 시간표는 아래와 같습니다.`;
+                    return `${stdStr}<br><br>${statusMsg}${schedHeader}${scheduleRows}`;
                 } else {
-                    return `👨‍🏫 **${foundTeacher.name}** 선생님 안내입니다.${fullSchedHtml}`;
+                    let schedHeader = `<br><br>👇 **${foundTeacher.name} 선생님**의 ${dToCheck}요일 전체 시간표는 아래와 같습니다.`;
+                    return `${stdStr}${schedHeader}${scheduleRows}`;
                 }
             }
 
@@ -1132,32 +1155,33 @@
                         const raw = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "" });
                         
                         let classCols = {};
-                        for (let r=0; r < raw.length; r++) {
-                            for (let c=0; c < raw[r].length; c++) {
-                                let val = String(raw[r][c]).replace(/\s/g, "");
-                                if (val === "성명" || val === "이름") {
-                                    let normClass = null;
-                                    for (let upR = r-1; upR >= Math.max(0, r-3); upR--) {
-                                        for (let leftC = c + 1; leftC >= Math.max(0, c-4); leftC--) {
-                                            let cellVal = String(raw[upR][leftC]).trim();
-                                            if (cellVal) {
-                                                normClass = findClassInText(cellVal);
-                                                if (!normClass && sheetName.match(/[1-3]/)) {
-                                                    normClass = findClassInText(sheetName.match(/[1-3]/)[0] + "학년 " + cellVal);
+                        for(let r = 0; r < Math.min(10, raw.length); r++) {
+                            for(let c = 0; c < raw[r].length; c++) {
+                                let cellVal = String(raw[r][c]).trim();
+                                if (!cellVal) continue;
+
+                                let normClass = findClassInText(cellVal);
+                                if (!normClass && sheetName.match(/[1-3]\s*학년/)) {
+                                    normClass = findClassInText(sheetName.match(/([1-3])/)[1] + "학년 " + cellVal);
+                                }
+
+                                if (normClass && !classCols[normClass]) {
+                                    for (let lookR = r; lookR <= r + 3; lookR++) {
+                                        if (lookR >= raw.length) break;
+                                        for (let lookC = Math.max(0, c - 2); lookC <= c + 3; lookC++) {
+                                            let headerVal = String(raw[lookR][lookC]).trim();
+                                            if (headerVal === "성명" || headerVal === "이름") {
+                                                let numCol = lookC - 1;
+                                                for(let nc = Math.max(0, lookC - 2); nc <= lookC + 1; nc++) {
+                                                    if (String(raw[lookR][nc]).trim() === "번호") {
+                                                        numCol = nc; break;
+                                                    }
                                                 }
-                                                if (normClass) break;
+                                                classCols[normClass] = { nameCol: lookC, numCol: numCol, startRow: lookR + 1 };
+                                                break;
                                             }
                                         }
-                                        if (normClass) break;
-                                    }
-                                    if (normClass) {
-                                        let numCol = c - 1;
-                                        for (let leftC = c; leftC >= Math.max(0, c-2); leftC--) {
-                                            if (String(raw[r][leftC]).replace(/\s/g, "") === "번호") {
-                                                numCol = leftC; break;
-                                            }
-                                        }
-                                        classCols[normClass] = { nameCol: c, numCol: numCol, startRow: r + 1 };
+                                        if (classCols[normClass]) break;
                                     }
                                 }
                             }
@@ -1177,8 +1201,6 @@
 
                                 if (cleanName.length >= 2) {
                                     studentDB.push({ name: cleanName, cls: cls, num: sNum });
-                                } else if (!sName && !sNum) {
-                                    break; 
                                 }
                             }
                         }
@@ -1305,6 +1327,8 @@
                     const sheet = workbook.Sheets[sheetName];
                     const raw = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "" });
                     if(raw.length < 3) return;
+                    
+                    resolveMerges(sheet, raw); // 👈 완벽한 셀 병합 처리 X-ray 스캔 실행
 
                     for (let r = 0; r < raw.length; r++) {
                         const row = raw[r];
@@ -1359,10 +1383,13 @@
                                                 let val = String(scanRow[c + idx] || "").trim();
                                                 val = val.replace(/\r\n/g, "\n").replace(/\n/g, "\n");
                                                 if (val) {
-                                                    if (periodData[currentPeriod][day]) {
-                                                        periodData[currentPeriod][day] += "\n" + val;
-                                                    } else {
-                                                        periodData[currentPeriod][day] = val;
+                                                    let currentVal = periodData[currentPeriod][day];
+                                                    if (!currentVal.includes(val)) {
+                                                        if (currentVal) {
+                                                            periodData[currentPeriod][day] += "\n" + val;
+                                                        } else {
+                                                            periodData[currentPeriod][day] = val;
+                                                        }
                                                     }
                                                 }
                                             });
@@ -1372,15 +1399,6 @@
                                     for (let p = 1; p <= 7; p++) {
                                         ["월", "화", "수", "목", "금"].forEach(day => {
                                             let text = periodData[p][day].replace(/\n\n/g, "\n").replace(/^\n|\n$/g, "").trim();
-                                            
-                                            if (!text && p > 1) {
-                                                if (day === "금" && p >= 5) {
-                                                    text = ""; 
-                                                } else {
-                                                    text = periodData[p-1][day]; 
-                                                    periodData[p][day] = text; 
-                                                }
-                                            }
                                             classSchedules[normClass][`${day}${p}`] = text;
                                         });
                                     }
@@ -1402,6 +1420,8 @@
             const sheet = workbook.Sheets[targetSheetName];
             const raw = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "" });
             if (raw.length < 3) return alert("데이터가 너무 적습니다. 올바른 시간표 시트인지 확인해주세요.");
+            
+            resolveMerges(sheet, raw); // 👈 교사 시간표 가로 병합(연강) 완벽 해독!
 
             let dayRowIdx = -1;
             for (let i = 0; i < Math.min(20, raw.length); i++) {
