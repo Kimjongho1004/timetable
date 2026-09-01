@@ -237,7 +237,7 @@
             display: none; margin-top: 20px; padding: 18px; border-radius: 10px; font-size: 1rem; font-weight: bold; line-height: 1.6; text-align: center;
         }
 
-        /* 팝업 스타일 */
+        /* 당일 시간표 모달(팝업) 스타일 */
         .modal-overlay {
             position: fixed; top: 0; left: 0; right: 0; bottom: 0;
             background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center;
@@ -365,13 +365,13 @@
                 </h2>
                 <div class="upload-area">
                     <div class="file-input-wrapper">
-                        <!-- 🔥 교무부 시간표 업로드 버튼 -->
+                        <!-- 🔥 오직 1개의 수동 업로드 버튼 (교사 시간표) -->
                         <label for="excelUpload" class="file-input-btn" id="uploadLabel">
                             📁 교무부 시간표 엑셀 업로드 (클릭)
                         </label>
                         <input type="file" id="excelUpload" accept=".xlsx, .xls, .csv" style="display:none;">
                     </div>
-                    <!-- 🔥 깃허브 연동 상태 알림판 -->
+                    <!-- 🔥 깃허브 연동 상태 알림판 추가 -->
                     <div class="github-status-box" id="githubStatusBox">
                         <strong>☁️ 클라우드(GitHub) 자동 연동</strong>
                         <div class="status-row">
@@ -497,6 +497,7 @@
             </div>
         </div>
         <div class="chat-input-area">
+            <!-- 🔥 입력창 클릭 시 문구 지워지는 완벽 로직 적용 -->
             <input type="text" id="chatInput" value="넌 무엇을 할 수 있지?" onmousedown="clearInitialText(this)" onkeydown="clearInitialText(this)" onkeypress="if(event.key === 'Enter') handleChat()">
             <button onclick="handleChat()">전송</button>
         </div>
@@ -661,6 +662,7 @@
             }, 400); 
         }
 
+        // 🔥 "의료전기전자과" 오류 원천 차단된 정규식 파싱 엔진
         function findClassInText(text) {
             const norm = text.replace(/과/g, "").replace(/ /g, "");
             
@@ -671,8 +673,8 @@
             if (deptMidMatch) {
                 let deptStr = deptMidMatch[2];
                 let dept = "";
-                if (deptStr.includes("기")) dept = "기";
-                else if (deptStr.includes("전")) dept = "전";
+                if (deptStr.includes("전")) dept = "전";
+                else if (deptStr.includes("기")) dept = "기";
                 else if (deptStr.includes("바")) dept = "바";
                 if (dept) return `${deptMidMatch[1]}${dept}${deptMidMatch[3]}`;
             }
@@ -683,8 +685,8 @@
                 let grade = deptFirstMatch[2];
                 let cls = deptFirstMatch[3];
                 let dept = "";
-                if (deptStr.includes("기")) dept = "기";
-                else if (deptStr.includes("전")) dept = "전";
+                if (deptStr.includes("전")) dept = "전";
+                else if (deptStr.includes("기")) dept = "기";
                 else if (deptStr.includes("바")) dept = "바";
                 if (dept) return `${grade}${dept}${cls}`;
             }
@@ -695,8 +697,8 @@
                 let cls = gradeFirstMatch[2];
                 let deptStr = gradeFirstMatch[3];
                 let dept = "";
-                if (deptStr.includes("기")) dept = "기";
-                else if (deptStr.includes("전")) dept = "전";
+                if (deptStr.includes("전")) dept = "전";
+                else if (deptStr.includes("기")) dept = "기";
                 else if (deptStr.includes("바")) dept = "바";
                 if (dept) return `${grade}${dept}${cls}`;
             }
@@ -717,31 +719,6 @@
             if (grade && dept && cls) return `${grade}${dept}${cls}`;
 
             return null;
-        }
-
-        // 🔥 X-ray 셀 병합 처리기 (모든 병합된 셀에 값 복제)
-        function resolveMerges(sheet, raw) {
-            if (sheet["!merges"]) {
-                sheet["!merges"].forEach(range => {
-                    let sr = range.s.r;
-                    let sc = range.s.c;
-                    let er = range.e.r;
-                    let ec = range.e.c;
-                    if (sr >= raw.length) return;
-                    if (!raw[sr]) return;
-                    
-                    let startVal = raw[sr][sc];
-                    if (startVal !== undefined && startVal !== null && startVal !== "") {
-                        for (let r = sr; r <= er; r++) {
-                            if (r >= raw.length) raw[r] = []; 
-                            if (!raw[r]) raw[r] = [];
-                            for (let c = sc; c <= ec; c++) {
-                                raw[r][c] = startVal;
-                            }
-                        }
-                    }
-                });
-            }
         }
 
         function getClassSubject(className, day, period) {
@@ -1328,8 +1305,6 @@
                     const sheet = workbook.Sheets[sheetName];
                     const raw = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "" });
                     if(raw.length < 3) return;
-                    
-                    resolveMerges(sheet, raw); // 👈 완벽한 셀 병합 처리 X-ray 스캔 실행
 
                     for (let r = 0; r < raw.length; r++) {
                         const row = raw[r];
@@ -1384,14 +1359,10 @@
                                                 let val = String(scanRow[c + idx] || "").trim();
                                                 val = val.replace(/\r\n/g, "\n").replace(/\n/g, "\n");
                                                 if (val) {
-                                                    let currentVal = periodData[currentPeriod][day];
-                                                    // 병합 해제에 따른 텍스트 중복 방지
-                                                    if (!currentVal.includes(val)) {
-                                                        if (currentVal) {
-                                                            periodData[currentPeriod][day] += "\n" + val;
-                                                        } else {
-                                                            periodData[currentPeriod][day] = val;
-                                                        }
+                                                    if (periodData[currentPeriod][day]) {
+                                                        periodData[currentPeriod][day] += "\n" + val;
+                                                    } else {
+                                                        periodData[currentPeriod][day] = val;
                                                     }
                                                 }
                                             });
@@ -1401,6 +1372,15 @@
                                     for (let p = 1; p <= 7; p++) {
                                         ["월", "화", "수", "목", "금"].forEach(day => {
                                             let text = periodData[p][day].replace(/\n\n/g, "\n").replace(/^\n|\n$/g, "").trim();
+                                            
+                                            if (!text && p > 1) {
+                                                if (day === "금" && p >= 5) {
+                                                    text = ""; 
+                                                } else {
+                                                    text = periodData[p-1][day]; 
+                                                    periodData[p][day] = text; 
+                                                }
+                                            }
                                             classSchedules[normClass][`${day}${p}`] = text;
                                         });
                                     }
@@ -1422,8 +1402,6 @@
             const sheet = workbook.Sheets[targetSheetName];
             const raw = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "" });
             if (raw.length < 3) return alert("데이터가 너무 적습니다. 올바른 시간표 시트인지 확인해주세요.");
-            
-            resolveMerges(sheet, raw); // 👈 교사 시간표 가로 병합(연강) 완벽 해독!
 
             let dayRowIdx = -1;
             for (let i = 0; i < Math.min(20, raw.length); i++) {
@@ -1529,7 +1507,7 @@
         function isFreePeriod(val, day, period, teacherName) {
             if (!val) return true;
             const clean = val.trim();
-            if (clean === "" || clean === "-" || clean.includes("공강")) return true;
+            if (clean === "" || clean === "-") return true;
 
             if (day === "월" && Number(period) === 1 && clean.includes("창체")) {
                 if (!homeroomTeachers.includes(teacherName)) return true;
@@ -1579,8 +1557,7 @@
                 for (let p = 1; p <= 7; p++) {
                     const classContent = teacher ? (teacher.schedule[`${day}${p}`] || "") : "";
                     
-                    // 선생님이 실제로 들어가는 정규 수업만 체크박스에 표시
-                    if (classContent && classContent.trim() !== "" && classContent.trim() !== "-" && !classContent.includes("공강")) {
+                    if (!isFreePeriod(classContent, day, p, teacher.name)) {
                         hasClassesForDay = true;
                         hasAnyClass = true;
                         dayHtml += `
