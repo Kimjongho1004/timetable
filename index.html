@@ -71,7 +71,6 @@
         .file-input-btn:hover { border-color: var(--primary); color: var(--primary); background: rgba(56, 189, 248, 0.05); }
         .file-input-btn.loaded { border-color: var(--success); color: var(--success); background: rgba(16, 185, 129, 0.08); border-style: solid; }
 
-        /* 🔥 깃허브 연동 상태창 디자인 */
         .github-status-box {
             margin-top: 10px; padding: 12px; border-radius: 8px; font-size: 0.85rem; color: var(--text-dim);
             background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.05); width: 100%; box-sizing: border-box;
@@ -302,7 +301,7 @@
 
         .chatbot-window {
             position: fixed; bottom: 110px; left: 30px;
-            width: 380px; height: 550px; background: var(--card-bg);
+            width: 360px; height: 520px; background: var(--card-bg);
             border: 1px solid rgba(56, 189, 248, 0.4); border-radius: 16px;
             box-shadow: 0 15px 40px rgba(0,0,0,0.6);
             display: none; flex-direction: column; overflow: hidden;
@@ -498,7 +497,7 @@
             </div>
         </div>
         <div class="chat-input-area">
-            <!-- 🔥 입력창 클릭 시 문구 지워지는 완벽 로직 적용 -->
+            <!-- 🔥 입력창 클릭 시 문구 싹 지워지는 로직 완벽 반영 -->
             <input type="text" id="chatInput" value="넌 무엇을 할 수 있지?" onmousedown="clearInitialText(this)" onkeydown="clearInitialText(this)" onkeypress="if(event.key === 'Enter') handleChat()">
             <button onclick="handleChat()">전송</button>
         </div>
@@ -583,7 +582,6 @@
             loadFromStorage();  
         });
 
-        // 🔥 입력창 클릭 시 문구 지우기 로직 (자동포커스 제거로 완벽 작동)
         let isInitialChat = true;
         function clearInitialText(el) {
             if (isInitialChat && el.value === "넌 무엇을 할 수 있지?") {
@@ -592,7 +590,6 @@
             }
         }
 
-        // 🔥 일과 시간표 매핑 로직 (금요일 단축 및 점심/쉬는시간 판별)
         function getCurrentPeriod() {
             const now = new Date();
             const day = now.getDay();
@@ -723,7 +720,7 @@
             return null;
         }
 
-        // 🔥 수업 정보 마스터 추출기 (학급 탭 원문 1순위, 교사 탭 2순위)
+        // 🔥 수업 정보 마스터 추출기
         function getClassSubject(className, day, period) {
             let clsInfo = null;
             if (Object.keys(classSchedules).length > 0 && classSchedules[className]) {
@@ -735,7 +732,6 @@
                 }
             }
             
-            // 학급 탭에 없으면 교사 시간표 역추적
             let foundSubj = null;
             teacherSchedules.forEach(t => {
                 const cell = t.schedule[`${day}${period}`] || "";
@@ -749,7 +745,6 @@
             return foundSubj;
         }
 
-        // 🔥 스마트 파싱 챗봇 종합 엔진
         function processChat(text) {
             if (text.replace(/\s+/g, "").includes("무엇을할수있") || text.includes("기능") || text.includes("도움말") || text === "넌 무엇을 할 수 있지?") {
                 return `🤖 **T-Bot 기능 안내**<br><br>다음과 같이 편하게 물어보시면 다 대답해 드립니다!<br>• 👩‍🏫 **교사 시간표**: "김종호 선생님 오늘 시간표"<br>• 🏫 **학급 시간표**: "전자2-1 지금 무슨 수업해?"<br>• 🎓 **학생 찾기**: "권영은 지금 무슨 시간이지?"<br>• 🔍 **조건 검색**: "오늘 2교시 수업 없는 쌤", "2기2 소통 선생님 누구?"`;
@@ -773,7 +768,7 @@
             let targetDay = null;
             const todayNum = new Date().getDay(); 
             
-            // 🔥 '지금', '방금', '수업', '현재' 라는 단어가 포함되어 있으면 요일 판별에서 그 단어를 지우고 판별함 (지금 -> 금요일 오인식 방지!)
+            // 🔥 '지금', '방금', '수업', '현재' 라는 단어가 포함되어 있으면 요일 판별에서 그 단어를 지우고 판별 (지금->금 오인식 방지 완벽 차단)
             let safeTextForDay = text.replace(/지금/g, "").replace(/방금/g, "").replace(/수업/g, "").replace(/현재/g, "");
 
             if (safeTextForDay.includes("오늘")) {
@@ -867,7 +862,6 @@
                 }
             }
 
-            // 🤖 [학생 명렬표 검색 + 완벽 브리핑 시스템]
             if (studentDB.length > 0 && !foundTeacher && !foundClass) {
                 let foundStudents = studentDB.filter(s => text.includes(s.name));
                 if (foundStudents.length > 0) {
@@ -905,7 +899,6 @@
 
                         if (!pToCheck || !dToCheck) {
                             if (!pToCheck && dToCheck) {
-                                // 1. 전체 시간표 HTML 생성
                                 let fullSchedHtml = `<br><br>👇 **${s.name} 학생의 오늘(${dToCheck}요일) 전체 수업 시간표는 아래와 같습니다.**<br><div style="background:rgba(0,0,0,0.2); padding:12px; border-radius:8px; margin-top:8px; line-height:1.8;">`;
                                 let hasClass = false;
                                 for(let i=1; i<=7; i++) {
@@ -925,7 +918,6 @@
                             return `${stdStr}<br>⏰ 지금은 정규 일과 시간이 아니며, 질문하신 교시를 파악할 수 없습니다.`;
                         }
 
-                        // 전체 시간표 HTML 생성
                         let fullSchedHtml = `<br><br>👇 **${s.name} 학생의 오늘(${dToCheck}요일) 전체 수업 시간표는 아래와 같습니다.**<br><div style="background:rgba(0,0,0,0.2); padding:12px; border-radius:8px; margin-top:8px; line-height:1.8;">`;
                         let hasClass = false;
                         for(let i=1; i<=7; i++) {
@@ -940,7 +932,6 @@
                         fullSchedHtml += `</div>`;
                         if (!hasClass) fullSchedHtml = `<br><br>오늘(${dToCheck}요일)은 배정된 정규 수업이 없습니다! 🎉`;
 
-                        // 현재 상황 브리핑
                         if (isRealTime && cpInfo) {
                             let statusMsg = "";
                             if (cpInfo.status === 'break') {
@@ -956,9 +947,7 @@
                                 }
                             }
                             return `${stdStr}<br>${statusMsg}${fullSchedHtml}`;
-                        } 
-                        // 특정 시간 브리핑 (예: "3교시 수업 뭐야?")
-                        else if (pToCheck) {
+                        } else if (pToCheck) {
                             let clsInfo = getClassSubject(s.cls, dToCheck, pToCheck);
                             if (clsInfo) {
                                 return `${stdStr}<br>⏰ ${dToCheck}요일(**${pToCheck}교시**) <strong style='color:#fbbf24;'>[${clsInfo}]</strong> 수업입니다.${fullSchedHtml}`;
@@ -972,7 +961,6 @@
                 }
             }
 
-            // 🤖 [학급 통합 브리핑 로직]
             if (foundClass && !foundTeacher) {
                 let currentDayStr = numToDay[new Date().getDay()];
                 let cpInfo = getCurrentPeriod();
@@ -1024,7 +1012,6 @@
                 }
             }
 
-            // 🤖 [교사 통합 브리핑 로직]
             if (foundTeacher) {
                 let currentDayStr = numToDay[new Date().getDay()];
                 let cpInfo = getCurrentPeriod();
@@ -1131,7 +1118,7 @@
                 });
         }
 
-        // 🔥 학생 명렬표 전용 GitHub 블록단위 스마트 파싱
+        // 🔥 학생 명렬표 전용 GitHub 자동 다운로드 로직
         function loadRoster() {
             fetch('roster.xlsx?t=' + new Date().getTime())
                 .then(response => {
@@ -1150,7 +1137,6 @@
                         for (let r=0; r < raw.length; r++) {
                             for (let c=0; c < raw[r].length; c++) {
                                 let val = String(raw[r][c]).replace(/\s/g, "");
-                                // "성명" 혹은 "이름"을 찾으면 그 위쪽에서 학급명을 찾음
                                 if (val === "성명" || val === "이름") {
                                     let normClass = null;
                                     for (let upR = r-1; upR >= Math.max(0, r-3); upR--) {
@@ -1158,7 +1144,6 @@
                                             let cellVal = String(raw[upR][leftC]).trim();
                                             if (cellVal) {
                                                 normClass = findClassInText(cellVal);
-                                                // 시트 이름(예: 1학년)과 결합해서 찾아봄
                                                 if (!normClass && sheetName.match(/[1-3]/)) {
                                                     normClass = findClassInText(sheetName.match(/[1-3]/)[0] + "학년 " + cellVal);
                                                 }
@@ -1174,14 +1159,12 @@
                                                 numCol = leftC; break;
                                             }
                                         }
-                                        // 해당 반의 헤더 위치 저장
                                         classCols[normClass] = { nameCol: c, numCol: numCol, startRow: r + 1 };
                                     }
                                 }
                             }
                         }
 
-                        // 찾은 헤더를 바탕으로 학생 데이터 추출
                         for (let cls in classCols) {
                             let info = classCols[cls];
                             for (let r = info.startRow; r < raw.length; r++) {
@@ -1197,7 +1180,7 @@
                                 if (cleanName.length >= 2) {
                                     studentDB.push({ name: cleanName, cls: cls, num: sNum });
                                 } else if (!sName && !sNum) {
-                                    break; // 빈칸이 나오면 이 반 명렬표 끝
+                                    break; 
                                 }
                             }
                         }
@@ -2177,6 +2160,20 @@
 
             keys.sort();
 
+            // 3자 연쇄 날짜 매핑 헬퍼 함수
+            function getDateStringForDayInSameWeek(baseDateStr, targetDay) {
+                const dayToNumLocal = { "일": 0, "월": 1, "화": 2, "수": 3, "목": 4, "금": 5, "토": 6 };
+                const baseDate = new Date(baseDateStr);
+                const baseDayNum = baseDate.getDay();
+                const targetDayNum = dayToNumLocal[targetDay];
+                let diffDays = targetDayNum - baseDayNum;
+                const targetDate = new Date(baseDate);
+                targetDate.setDate(baseDate.getDate() + diffDays);
+                const m = String(targetDate.getMonth() + 1).padStart(2, '0');
+                const d = String(targetDate.getDate()).padStart(2, '0');
+                return `${m}.${d}.`;
+            }
+
             keys.forEach(id => {
                 const item = currentSelectedSwaps[id];
                 if (!item || !item.absentItem) return;
@@ -2200,13 +2197,68 @@
                         </tr>
                     `;
                 } else if (item.type === 'deep') {
+                    let dayB = item.timeB.charAt(0);
+                    let pB = item.timeB.charAt(1);
+                    let classB_info = parseClassInfo(item.classB);
+
+                    let dayC = item.timeC.charAt(0);
+                    let pC = item.timeC.charAt(1);
+                    let classC_info = parseClassInfo(item.classC);
+
+                    let dateB = getDateStringForDayInSameWeek(absentItem.dateStr, dayB);
+                    let dateC = getDateStringForDayInSameWeek(absentItem.dateStr, dayC);
+
+                    // Row 1 (A 결강, B 대체)
+                    tbody.innerHTML += `
+                        <tr>
+                            <td>${orig.sub}</td>
+                            <td>${origDateFormatted}(${absentItem.day})</td>
+                            <td>${absentItem.period}교시</td>
+                            <td>${orig.room}</td>
+                            <td>${absentName}</td>
+                            <td style="color:#f59e0b;">대강</td>
+                            <td>${origDateFormatted}(${absentItem.day})</td>
+                            <td>${absentItem.period}교시</td>
+                            <td style="color:#0284c7; font-weight:bold;">${item.teacherB}</td>
+                        </tr>
+                    `;
+                    // Row 2 (B 결강, C 대체)
+                    tbody.innerHTML += `
+                        <tr>
+                            <td>${classB_info.sub}</td>
+                            <td>${dateB}(${dayB})</td>
+                            <td>${pB}교시</td>
+                            <td>${classB_info.room}</td>
+                            <td>${item.teacherB}</td>
+                            <td style="color:#f59e0b;">대강</td>
+                            <td>${dateB}(${dayB})</td>
+                            <td>${pB}교시</td>
+                            <td style="color:#0284c7; font-weight:bold;">${item.teacherC}</td>
+                        </tr>
+                    `;
+                    // Row 3 (C 결강, A 대체)
+                    tbody.innerHTML += `
+                        <tr>
+                            <td>${classC_info.sub}</td>
+                            <td>${dateC}(${dayC})</td>
+                            <td>${pC}교시</td>
+                            <td>${classC_info.room}</td>
+                            <td>${item.teacherC}</td>
+                            <td style="color:#f59e0b;">대강</td>
+                            <td>${dateC}(${dayC})</td>
+                            <td>${pC}교시</td>
+                            <td style="color:#0284c7; font-weight:bold;">${absentName}</td>
+                        </tr>
+                    `;
+
+                    // 요약 정보 추가
                     tbody.innerHTML += `
                         <tr style="background-color:rgba(239, 68, 68, 0.05);">
                             <td colspan="9" style="text-align:left; padding:12px 15px; font-size:0.95rem; line-height: 1.6;">
-                                💡 <strong style="color:var(--danger);">[${origDateFormatted}(${absentItem.day}) ${absentItem.period}교시 3자 연쇄]</strong><br>
+                                💡 <strong style="color:var(--danger);">[${origDateFormatted}(${absentItem.day}) ${absentItem.period}교시 3자 연쇄 요약]</strong><br>
                                 • ${item.teacherB} 교사가 ${absentName} 교사의 결강 시간 대강<br>
-                                • ${item.teacherC} 교사가 ${item.teacherB} 교사의 ${item.timeB}교시 [${item.classB}] 대강<br>
-                                • ${absentName} 교사가 ${item.teacherC} 교사의 ${item.timeC}교시 [${item.classC}] 대강
+                                • ${item.teacherC} 교사가 ${item.teacherB} 교사의 ${dayB}${pB}교시 [${item.classB}] 대강<br>
+                                • ${absentName} 교사가 ${item.teacherC} 교사의 ${dayC}${pC}교시 [${item.classC}] 대강
                             </td>
                         </tr>
                     `;
