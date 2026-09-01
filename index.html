@@ -301,7 +301,7 @@
 
         .chatbot-window {
             position: fixed; bottom: 110px; left: 30px;
-            width: 360px; height: 520px; background: var(--card-bg);
+            width: 380px; height: 550px; background: var(--card-bg);
             border: 1px solid rgba(56, 189, 248, 0.4); border-radius: 16px;
             box-shadow: 0 15px 40px rgba(0,0,0,0.6);
             display: none; flex-direction: column; overflow: hidden;
@@ -360,12 +360,12 @@
         <div class="left-sidebar">
             <div class="panel">
                 <h2 class="panel-title">
-                    <span>1. 데이터 로드</span>
+                    <span>1. 시간표 로드</span>
                     <button class="btn danger" id="resetBtn" style="display:none;" onclick="clearStorage()">초기화</button>
                 </h2>
                 <div class="upload-area">
                     <div class="file-input-wrapper">
-                        <!-- 🔥 오직 1개의 업로드 버튼만 남김 -->
+                        <!-- 🔥 교사 시간표 업로드 버튼 -->
                         <label for="excelUpload" class="file-input-btn" id="uploadLabel">
                             📁 교무부 시간표 엑셀 업로드 (클릭)
                         </label>
@@ -497,7 +497,6 @@
             </div>
         </div>
         <div class="chat-input-area">
-            <!-- 🔥 입력창 클릭 시 문구 싹 지워지는 로직 완벽 반영 -->
             <input type="text" id="chatInput" value="넌 무엇을 할 수 있지?" onmousedown="clearInitialText(this)" onkeydown="clearInitialText(this)" onkeypress="if(event.key === 'Enter') handleChat()">
             <button onclick="handleChat()">전송</button>
         </div>
@@ -720,7 +719,6 @@
             return null;
         }
 
-        // 🔥 수업 정보 마스터 추출기
         function getClassSubject(className, day, period) {
             let clsInfo = null;
             if (Object.keys(classSchedules).length > 0 && classSchedules[className]) {
@@ -768,7 +766,6 @@
             let targetDay = null;
             const todayNum = new Date().getDay(); 
             
-            // 🔥 '지금', '방금', '수업', '현재' 라는 단어가 포함되어 있으면 요일 판별에서 그 단어를 지우고 판별 (지금->금 오인식 방지 완벽 차단)
             let safeTextForDay = text.replace(/지금/g, "").replace(/방금/g, "").replace(/수업/g, "").replace(/현재/g, "");
 
             if (safeTextForDay.includes("오늘")) {
@@ -1118,7 +1115,6 @@
                 });
         }
 
-        // 🔥 학생 명렬표 전용 GitHub 자동 다운로드 로직
         function loadRoster() {
             fetch('roster.xlsx?t=' + new Date().getTime())
                 .then(response => {
@@ -2063,6 +2059,7 @@
             const dStr = parts[0];
             const p = parseInt(parts[1]);
             const day = getDayOfWeek(dStr);
+            const absentClass = absentTeacher.schedule[`${day}${p}`] || "";
 
             const chains = findDeepSwapsForPeriod(absentTeacher, day, p, dStr);
 
@@ -2073,9 +2070,9 @@
                 chains.forEach((c) => {
                     html += `
                         <div style="background:rgba(0,0,0,0.3); padding:14px; border-radius:10px; margin-bottom:10px;">
-                            • <strong>1단계</strong>: ${c.teacherB} 교사가 ${absentName} 교사의 결강 시간 대강<br>
-                            • <strong>2단계</strong>: ${c.teacherC} 교사가 ${c.teacherB} 교사의 ${c.timeB}교시 [${c.classB}] 대강<br>
-                            • <strong>3단계</strong>: ${absentName} 교사가 ${c.teacherC} 교사의 ${c.timeC}교시 [${c.classC}] 대강
+                            • <strong>1단계</strong>: ${c.teacherB} 교사가 ${absentName} 교사의 결강 시간에 [${c.classB}] 수업 진행<br>
+                            • <strong>2단계</strong>: ${c.teacherC} 교사가 ${c.teacherB} 교사의 ${c.timeB}교시에 [${c.classC}] 수업 진행<br>
+                            • <strong>3단계</strong>: ${absentName} 교사가 ${c.teacherC} 교사의 ${c.timeC}교시에 [${absentClass}] 수업 진행
                             <br>
                             <button class="btn purple" style="padding:8px 15px; margin-top:10px;"
                                 onclick="selectDeepSwapOption('${absentId}', '${absentName}', '${c.teacherB}', '${c.teacherC}', '${c.timeB}', '${c.classB}', '${c.timeC}', '${c.classC}', '${dStr}', '${day}', '${p}')">
@@ -2160,7 +2157,6 @@
 
             keys.sort();
 
-            // 3자 연쇄 날짜 매핑 헬퍼 함수
             function getDateStringForDayInSameWeek(baseDateStr, targetDay) {
                 const dayToNumLocal = { "일": 0, "월": 1, "화": 2, "수": 3, "목": 4, "금": 5, "토": 6 };
                 const baseDate = new Date(baseDateStr);
@@ -2216,7 +2212,7 @@
                             <td>${absentItem.period}교시</td>
                             <td>${orig.room}</td>
                             <td>${absentName}</td>
-                            <td style="color:#f59e0b;">대강</td>
+                            <td style="color:#0284c7; font-weight:bold;">${item.classB}</td>
                             <td>${origDateFormatted}(${absentItem.day})</td>
                             <td>${absentItem.period}교시</td>
                             <td style="color:#0284c7; font-weight:bold;">${item.teacherB}</td>
@@ -2230,7 +2226,7 @@
                             <td>${pB}교시</td>
                             <td>${classB_info.room}</td>
                             <td>${item.teacherB}</td>
-                            <td style="color:#f59e0b;">대강</td>
+                            <td style="color:#0284c7; font-weight:bold;">${item.classC}</td>
                             <td>${dateB}(${dayB})</td>
                             <td>${pB}교시</td>
                             <td style="color:#0284c7; font-weight:bold;">${item.teacherC}</td>
@@ -2244,7 +2240,7 @@
                             <td>${pC}교시</td>
                             <td>${classC_info.room}</td>
                             <td>${item.teacherC}</td>
-                            <td style="color:#f59e0b;">대강</td>
+                            <td style="color:#0284c7; font-weight:bold;">${item.absentItem.subject}</td>
                             <td>${dateC}(${dayC})</td>
                             <td>${pC}교시</td>
                             <td style="color:#0284c7; font-weight:bold;">${absentName}</td>
@@ -2256,9 +2252,9 @@
                         <tr style="background-color:rgba(239, 68, 68, 0.05);">
                             <td colspan="9" style="text-align:left; padding:12px 15px; font-size:0.95rem; line-height: 1.6;">
                                 💡 <strong style="color:var(--danger);">[${origDateFormatted}(${absentItem.day}) ${absentItem.period}교시 3자 연쇄 요약]</strong><br>
-                                • ${item.teacherB} 교사가 ${absentName} 교사의 결강 시간 대강<br>
-                                • ${item.teacherC} 교사가 ${item.teacherB} 교사의 ${dayB}${pB}교시 [${item.classB}] 대강<br>
-                                • ${absentName} 교사가 ${item.teacherC} 교사의 ${dayC}${pC}교시 [${item.classC}] 대강
+                                • ${item.teacherB} 교사가 ${absentName} 교사의 결강 시간(${orig.room})에 [${item.classB}] 수업 진행<br>
+                                • ${item.teacherC} 교사가 ${item.teacherB} 교사의 ${dayB}${pB}교시(${classB_info.room})에 [${item.classC}] 수업 진행<br>
+                                • ${absentName} 교사가 ${item.teacherC} 교사의 ${dayC}${pC}교시(${classC_info.room})에 [${item.absentItem.subject}] 수업 진행
                             </td>
                         </tr>
                     `;
