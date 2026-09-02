@@ -365,12 +365,14 @@
                 </h2>
                 <div class="upload-area">
                     <div class="file-input-wrapper">
+                        <!-- 🔥 교사 시간표 수동 업로드 버튼 -->
                         <label for="excelUpload" class="file-input-btn" id="uploadLabel">
                             📁 교무부 시간표 엑셀 업로드 (클릭)
                         </label>
                         <input type="file" id="excelUpload" accept=".xlsx, .xls, .csv" style="display:none;">
                     </div>
                     <div class="file-input-wrapper" style="margin-top: 10px;">
+                        <!-- 🔥 학생 명렬표 수동 업로드 버튼 복구 -->
                         <label for="rosterUpload" class="file-input-btn" id="rosterLabel">
                             📁 학생 명렬표 엑셀 업로드 (선택)
                         </label>
@@ -727,6 +729,7 @@
             return null;
         }
 
+        // 🔥 X-ray 셀 병합 처리기 (모든 병합된 셀에 값 복제)
         function resolveMerges(sheet, raw) {
             if (!sheet["!merges"]) return;
             sheet["!merges"].forEach(range => {
@@ -746,12 +749,13 @@
         }
 
         function getClassSubject(className, day, period) {
+            let clsInfo = null;
             if (Object.keys(classSchedules).length > 0 && classSchedules[className]) {
-                let clsInfo = classSchedules[className][`${day}${period}`];
+                clsInfo = classSchedules[className][`${day}${period}`];
                 if (clsInfo && clsInfo !== "-" && !clsInfo.includes("공강")) {
-                    return clsInfo.replace(/\n/g, "<br>"); 
+                    return clsInfo.replace(/\n/g, "<br>"); // 🔥 줄바꿈을 <br>로 치환하여 순환수업 가독성 확보
                 } else if (clsInfo && (clsInfo === "-" || clsInfo.includes("공강"))) {
-                    // 패스
+                    return null;
                 }
             }
             
@@ -771,137 +775,7 @@
             return null;
         }
 
-        // 🔥 스마트 블록 처리 엔진: 명렬표 빈칸 발생 시 안전종료
-        function processRosterData(workbook) {
-            let tempDB = []; 
-            
-            workbook.SheetNames.forEach(sheetName => {
-                const sheet = workbook.Sheets[sheetName];
-                const raw = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "" });
-                
-                let blocks = [];
-                for (let r=0; r < raw.length; r++) {
-                    if (!raw[r]) continue;
-                    for (let c=0; c < raw[r].length; c++) {
-                        let cellVal = String(raw[r][c]).replace(/\s/g, "");
-                        if (!cellVal) continue;
-
-                        let normClass = findClassInText(cellVal);
-                        if (!normClass && sheetName.match(/[1-3]/)) {
-                            normClass = findClassInText(sheetName.match(/[1-3]/)[0] + "학년 " + cellVal);
-                        }
-
-                        if (normClass) {
-                            let nameCol = -1;
-                            let numCol = -1;
-                            let startRow = r + 1;
-
-                            for(let lookR = r; lookR <= r + 3; lookR++) {
-                                if(lookR >= raw.length || !raw[lookR]) continue;
-                                for(let lookC = Math.max(0, c-2); lookC <= c+3; lookC++) {
-                                    let hVal = String(raw[lookR][lookC]).replace(/\s/g, "");
-                                    if(hVal === "성명" || hVal === "이름") {
-                                        nameCol = lookC;
-                                        startRow = lookR + 1;
-                                        for(let nc = Math.max(0, lookC-2); nc < lookC; nc++) {
-                                            if(String(raw[lookR][nc]).replace(/\s/g, "") === "번호") {
-                                                numCol = nc; break;
-                                            }
-                                        }
-                                        if(numCol === -1) numCol = lookC - 1; 
-                                        break;
-                                    }
-                                }
-                                if(nameCol !== -1) break;
-                            }
-
-                            if(nameCol === -1) {
-                                nameCol = c; 
-                                numCol = Math.max(0, c - 1);
-                            }
-
-                            blocks.push({ 
-                                cls: normClass, 
-                                nameCol: nameCol, 
-                                numCol: numCol, 
-                                startRow: startRow 
-                            });
-                        }
-                    }
-                }
-
-                // 중복 블록 제거
-                let uniqueBlocks = [];
-                let seenBlocks = new Set();
-                blocks.forEach(b => {
-                    let key = `${b.cls}_${b.nameCol}`;
-                    if(!seenBlocks.has(key)) {
-                        seenBlocks.add(key);
-                        uniqueBlocks.push(b);
-                    }
-                });
-
-                uniqueBlocks.sort((a, b) => a.startRow - b.startRow);
-
-                for (let i = 0; i < uniqueBlocks.length; i++) {
-                    let info = uniqueBlocks[i];
-                    let cls = info.cls;
-                    
-                    let endRow = raw.length;
-                    for (let j = i + 1; j < uniqueBlocks.length; j++) {
-                        if (Math.abs(uniqueBlocks[j].nameCol - info.nameCol) <= 2) {
-                            endRow = uniqueBlocks[j].startRow - 2; 
-                            break;
-                        }
-                    }
-                    
-                    let blankCount = 0;
-                    for (let r = info.startRow; r < endRow; r++) {
-                        if (!raw[r]) { 
-                            blankCount++; 
-                            if (blankCount > 3) break; 
-                            continue; 
-                        }
-                        
-                        let sName = String(raw[r][info.nameCol] || "").trim();
-                        let sNumRaw = String(raw[r][info.numCol] || "").trim();
-                        
-                        let checkTail = String(raw[r][Math.max(0, info.numCol-1)] || "") + sNumRaw + sName;
-                        if (checkTail.includes("합계") || (sName === "남" || sName === "여")) {
-                            break; 
-                        }
-                        
-                        if (!sName && !sNumRaw) { 
-                            blankCount++; 
-                            if (blankCount > 3) break; 
-                            continue; 
-                        }
-
-                        blankCount = 0; 
-                        let cleanName = sName.replace(/[^가-힣a-zA-Z]/g, ""); 
-                        let sNum = sNumRaw.replace(/[^0-9]/g, "");
-
-                        if (cleanName.length >= 2) {
-                            tempDB.push({ name: cleanName, cls: cls, num: sNum });
-                        }
-                    }
-                }
-            });
-
-            // 최종 중복 학생 제거
-            let uniqueDB = [];
-            let seen = new Set();
-            tempDB.forEach(s => {
-                let key = `${s.cls}_${s.num}_${s.name}`;
-                if (!seen.has(key)) {
-                    seen.add(key);
-                    uniqueDB.push(s);
-                }
-            });
-            
-            return uniqueDB;
-        }
-
+        // 🔥 스마트 파싱 챗봇 종합 엔진
         function processChat(text) {
             if (text.replace(/\s+/g, "").includes("무엇을할수있") || text.includes("기능") || text.includes("도움말") || text === "넌 무엇을 할 수 있지?") {
                 return `🤖 **T-Bot 기능 안내**<br><br>다음과 같이 편하게 물어보시면 다 대답해 드립니다!<br>• 👩‍🏫 **교사 시간표**: "김종호 선생님 오늘 시간표"<br>• 🏫 **학급 시간표**: "전자2-1 지금 무슨 수업해?"<br>• 🎓 **학생 찾기**: "권영은 지금 무슨 시간이지?", "김이삭"<br>• 🔍 **조건 검색**: "오늘 2교시 수업 없는 쌤", "2기2 소통 선생님 누구?"`;
@@ -927,6 +801,16 @@
             
             let safeTextForDay = text.replace(/지금/g, "").replace(/방금/g, "").replace(/수업/g, "").replace(/현재/g, "").replace(/시간/g, "");
 
+            // 🔥 이름 오인식(예: 이'수'연, 김윤'화') 방지: 검색된 교사, 학급, 학생 이름을 날짜 판별 문장에서 먼저 제거
+            if (foundTeacher) safeTextForDay = safeTextForDay.replace(new RegExp(foundTeacher.name, 'g'), "");
+            if (foundClass) safeTextForDay = safeTextForDay.replace(new RegExp(foundClass, 'g'), "");
+            if (studentDB && studentDB.length > 0) {
+                let tempFoundStudents = studentDB.filter(s => text.includes(s.name));
+                tempFoundStudents.forEach(s => {
+                    safeTextForDay = safeTextForDay.replace(new RegExp(s.name, 'g'), "");
+                });
+            }
+
             if (safeTextForDay.includes("오늘")) {
                 if (todayNum === 0 || todayNum === 6) return "오늘은 주말이라 정규 수업이 없습니다! 평일(월~금)을 기준으로 물어봐주세요.😊";
                 targetDay = numToDay[todayNum];
@@ -939,8 +823,14 @@
                 if (dat === 0 || dat === 6) return "모레는 주말이라 정규 수업이 없습니다! 평일(월~금)을 기준으로 물어봐주세요.😊";
                 targetDay = numToDay[dat];
             } else {
-                const dayMatch = safeTextForDay.match(/(월|화|수|목|금)/); 
-                if (dayMatch) targetDay = dayMatch[1];
+                // "월요일" 처럼 '요일'이 붙은 걸 먼저 명확히 찾고, 없으면 홑글자 요일 검색
+                const explicitDayMatch = safeTextForDay.match(/(월|화|수|목|금)요일/);
+                if (explicitDayMatch) {
+                    targetDay = explicitDayMatch[1];
+                } else {
+                    const dayMatch = safeTextForDay.match(/(월|화|수|목|금)/); 
+                    if (dayMatch) targetDay = dayMatch[1];
+                }
             }
 
             let targetPeriod = null;
@@ -1018,6 +908,7 @@
                 }
             }
 
+            // 🤖 [브리핑 변수 공통 설정]
             let currentDayStr = numToDay[new Date().getDay()] || "월";
             let cpInfo = getCurrentPeriod();
             let dToCheck = targetDay || currentDayStr;
@@ -1029,6 +920,7 @@
                 isRealTime = true;
             }
 
+            // 🤖 [학생 명렬표 검색 + 완벽 브리핑]
             if (studentDB.length > 0 && !foundTeacher && !foundClass) {
                 let foundStudents = studentDB.filter(s => text.includes(s.name));
                 if (foundStudents.length > 0) {
@@ -1091,6 +983,7 @@
                 }
             }
 
+            // 🤖 [학급 통합 브리핑 로직]
             if (foundClass && !foundTeacher) {
                 const deptNames = { "전": "의료전기전자과", "기": "의료기계과", "바": "바이오의약과" };
                 const fullClassName = `${foundClass[0]}학년 ${foundClass[2]}반 ${deptNames[foundClass[1]]}`;
@@ -1141,6 +1034,7 @@
                 return `${stdStr}<br><br>${statusMsg}${schedHeader}`;
             }
 
+            // 🤖 [교사 통합 브리핑 로직]
             if (foundTeacher) {
                 let stdStr = `👨‍🏫 **${foundTeacher.name}** 선생님 안내입니다.`;
 
@@ -1313,14 +1207,23 @@
         function loadFromStorage() {
             const savedData = localStorage.getItem('schoolTimetableData');
             const savedClass = localStorage.getItem('schoolClassData');
+            const savedStudents = localStorage.getItem('schoolStudentData');
             
             if (savedData) {
                 try {
                     teacherSchedules = JSON.parse(savedData);
                     if(savedClass) classSchedules = JSON.parse(savedClass);
+                    if(savedStudents) studentDB = JSON.parse(savedStudents);
                     
                     uploadLabel.innerText = `📁 이전에 업로드한 시간표 자동 로드 완료`;
                     uploadLabel.classList.add('loaded');
+                    if (studentDB && studentDB.length > 0) {
+                        const rLabel = document.getElementById('rosterLabel');
+                        if (rLabel) {
+                            rLabel.innerText = `📁 명렬표 로드 완료 (${studentDB.length}명)`;
+                            rLabel.classList.add('loaded');
+                        }
+                    }
                     resetBtn.style.display = 'block';
                     initDropdowns();
                 } catch (e) { console.error(e); }
@@ -1331,6 +1234,7 @@
             if(confirm("기억된 시간표 데이터를 초기화하시겠습니까?")) {
                 localStorage.removeItem('schoolTimetableData');
                 localStorage.removeItem('schoolClassData');
+                localStorage.removeItem('schoolStudentData');
                 location.reload();
             }
         }
@@ -1346,6 +1250,30 @@
             };
             reader.readAsArrayBuffer(file);
         });
+
+        rosterUpload.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(evt) {
+                const data = new Uint8Array(evt.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                parseRosterExcel(workbook, file.name);
+            };
+            reader.readAsArrayBuffer(file);
+        });
+
+        function parseRosterExcel(workbook, fileName) {
+            studentDB = processRosterData(workbook);
+            if (studentDB.length > 0) {
+                localStorage.setItem('schoolStudentData', JSON.stringify(studentDB));
+                document.getElementById('rosterLabel').innerHTML = `📁 명렬표 로드 완료 (${studentDB.length}명)`;
+                document.getElementById('rosterLabel').classList.add('loaded');
+                alert(`명렬표 로드 성공! (총 ${studentDB.length}명)`);
+            } else {
+                alert("명렬표 데이터를 찾을 수 없습니다. 양식을 확인해주세요.");
+            }
+        }
 
         function parseSchoolExcel(workbook, fileName) {
             classSchedules = {}; 
@@ -1434,6 +1362,7 @@
                                                 val = val.replace(/\r\n/g, "\n").replace(/\n/g, "\n");
                                                 if (val) {
                                                     let currentVal = periodData[currentPeriod][day];
+                                                    // 병합 해제에 따른 텍스트 중복 방지
                                                     if (!currentVal.includes(val)) {
                                                         if (currentVal) {
                                                             periodData[currentPeriod][day] += "\n" + val;
@@ -1851,7 +1780,6 @@
             }
         }
 
-        // 🔥 교차 교체(Cross-Department) 허용 및 스마트 정렬 알고리즘 적용
         function findCandidatesForMultiDay(absentTeacher, absentItem, absentTimeKeys, blockedDatesSet, isExtended) {
             const { dateStr, day, period, subject } = absentItem;
             const targetKey = `${day}${period}`;
@@ -1883,7 +1811,7 @@
             }
 
             const isAbsentClassNative = subject.includes("원어민");
-            if (isAbsentClassNative) return []; // 원어민 수업은 원천 불가
+            if (isAbsentClassNative) return []; 
             
             const absentRoom = parseClassInfo(subject).room; 
             let candidates = [];
@@ -1939,7 +1867,7 @@
                                         totalAbsentClasses: totalAbsentClasses,
                                         isPE: targetClass.includes("체육"),
                                         isChangche: false,
-                                        isCrossDept: absentTeacher.department !== targetTeacher.department // 🔥 교차 교체 감지
+                                        isCrossDept: absentTeacher.department !== targetTeacher.department
                                     });
                                 });
                             }
@@ -1948,7 +1876,6 @@
                 }
             });
 
-            // 🔥 정렬 순위: 1순위(동일부서), 2순위(최단일자), 3순위(업무량)
             candidates.sort((a, b) => {
                 if (a.isCrossDept !== b.isCrossDept) return a.isCrossDept ? 1 : -1;
                 if (a.diffDays !== b.diffDays) return a.diffDays - b.diffDays;
@@ -1999,7 +1926,6 @@
                     let peAlert = c.isPE ? `<span style="color:#fbbf24; font-size:0.8rem; margin-left:6px;">⚠️ 체육관 확인</span>` : '';
                     let rankLabel = idx === 0 ? `<span class="tag-rank1" style="margin-right:4px;">최우선 추천</span>` : '';
                     
-                    // 🔥 교차 교체(보통↔전문) 알림 딱지 생성
                     let crossDeptAlert = c.isCrossDept ? `<span style="color:#ef4444; font-size:0.75rem; border: 1px solid #ef4444; padding: 2px 6px; border-radius: 4px; margin-left:6px; font-weight:800;" title="보통-전문 교차 교체 시 교실/실습실 이동이 필요할 수 있습니다.">⚠️ 교실/실습실 이동 주의</span>` : '';
 
                     html += `
@@ -2138,6 +2064,7 @@
             const dStr = parts[0];
             const p = parseInt(parts[1]);
             const day = getDayOfWeek(dStr);
+            const absentClass = absentTeacher.schedule[`${day}${p}`] || "";
 
             const chains = findDeepSwapsForPeriod(absentTeacher, day, p, dStr);
 
@@ -2149,9 +2076,9 @@
                     let warningHtml = c.crossHop > 0 ? `<div style="color:#ef4444; font-size:0.8rem; font-weight:bold; margin-top:6px;">⚠️ 전문/보통교과 교차 포함 (교실/실습실 이동 주의)</div>` : '';
                     html += `
                         <div style="background:rgba(0,0,0,0.3); padding:14px; border-radius:10px; margin-bottom:10px;">
-                            • <strong>1단계</strong>: ${c.teacherB}(${c.deptB}) 교사가 ${absentName} 교사의 결강 시간 대강<br>
-                            • <strong>2단계</strong>: ${c.teacherC}(${c.deptC}) 교사가 ${c.teacherB} 교사의 ${c.timeB}교시 [${c.classB}] 대강<br>
-                            • <strong>3단계</strong>: ${absentName} 교사가 ${c.teacherC} 교사의 ${c.timeC}교시 [${c.classC}] 대강
+                            • <strong>1단계</strong>: ${c.teacherB}(${c.deptB}) 교사가 ${absentName} 교사의 결강 시간에 [${c.classB}] 수업 진행<br>
+                            • <strong>2단계</strong>: ${c.teacherC}(${c.deptC}) 교사가 ${c.teacherB} 교사의 ${c.timeB}교시에 [${c.classC}] 수업 진행<br>
+                            • <strong>3단계</strong>: ${absentName} 교사가 ${c.teacherC} 교사의 ${c.timeC}교시에 [${absentClass}] 수업 진행
                             ${warningHtml}
                             <br>
                             <button class="btn purple" style="padding:8px 15px; margin-top:10px;"
@@ -2165,11 +2092,10 @@
             }
         }
 
-        // 🔥 교차 교체(Cross-Department) 허용된 심층 교체 로직
         function findDeepSwapsForPeriod(absentTeacher, day, period, dateStr) {
             const targetKey = `${day}${period}`;
             const absentClass = absentTeacher.schedule[targetKey] || "";
-            if (absentClass.includes("원어민")) return []; // 원어민은 원천 불가
+            if (absentClass.includes("원어민")) return []; 
             
             const absentRoom = parseClassInfo(absentClass).room;
             let deepChains = [];
@@ -2195,7 +2121,6 @@
                                                 const absentIsFreeAtC = isFreePeriod(absentTeacher.schedule[keyC], dC, pC, absentTeacher.name);
                                                 if (!isFreePeriod(classC, dC, pC, teacherC.name) && absentIsFreeAtC && !classC.includes("원어민") && parseClassInfo(classC).room === absentRoom) {
                                                     
-                                                    // 부서 간 크로스 합(Hop) 계산
                                                     let crossHop = 0;
                                                     if (absentTeacher.department !== teacherB.department) crossHop++;
                                                     if (teacherB.department !== teacherC.department) crossHop++;
@@ -2216,7 +2141,7 @@
                     });
                 }
             });
-            deepChains.sort((a, b) => a.crossHop - b.crossHop); // 같은 부서끼리 1순위
+            deepChains.sort((a, b) => a.crossHop - b.crossHop); 
             return deepChains.slice(0, 2);
         }
 
