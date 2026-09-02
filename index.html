@@ -470,13 +470,17 @@
                     </tbody>
                 </table>
 
-                <div style="text-align: center; margin-top: 25px; display: flex; gap: 15px; justify-content: center;">
-                    <button class="btn purple" style="padding: 14px 25px; font-size: 1.1rem; flex: 1;" onclick="runFinalValidation()">
+                <div style="margin-top: 25px; display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
+                    <button class="btn purple" style="padding: 14px 20px; font-size: 1.05rem; flex: 1; min-width: 200px;" onclick="runFinalValidation()">
                         ✔️ 최종 오류 검토 (중복/누락 확인)
                     </button>
-                    <!-- 🔥 한글/워드 파일 다운로드 버튼 추가 -->
-                    <button class="btn action" style="padding: 14px 25px; font-size: 1.1rem; flex: 1;" onclick="downloadTableAsWord()" id="downloadDocBtn" disabled>
-                        📄 한글/워드로 다운로드
+                    <!-- 🔥 표 복사하기 버튼 추가 -->
+                    <button class="btn action" style="padding: 14px 20px; font-size: 1.05rem; flex: 1; min-width: 200px;" onclick="copyTableToClipboard()" id="copyTableBtn" disabled>
+                        📋 표 복사하기 (한글에 붙여넣기)
+                    </button>
+                    <!-- 🔥 HWP 다운로드 버튼 -->
+                    <button class="btn secondary" style="padding: 14px 20px; font-size: 1.05rem; flex: 1; min-width: 200px;" onclick="downloadTableAsHwp()" id="downloadHwpBtn" disabled>
+                        📄 HWP 파일로 다운로드
                     </button>
                 </div>
                 <div class="validation-box" id="validationResultBox"></div>
@@ -569,7 +573,6 @@
         }
 
         const excelUpload = document.getElementById('excelUpload');
-        const rosterUpload = document.getElementById('rosterUpload');
         const uploadLabel = document.getElementById('uploadLabel');
         const searchPanel = document.getElementById('searchPanel');
         const teacherSelect = document.getElementById('teacherSelect');
@@ -587,7 +590,6 @@
         document.addEventListener('DOMContentLoaded', () => {
             addDateInput();
             loadSchoolEvents(); 
-            // 🔥 깃허브에서 명렬표 자동 다운로드 실행 복구!
             loadRoster(); 
             loadFromStorage();  
         });
@@ -848,28 +850,33 @@
                     let info = uniqueBlocks[i];
                     let cls = info.cls;
                     
+                    let endRow = raw.length;
+                    for (let j = i + 1; j < uniqueBlocks.length; j++) {
+                        if (Math.abs(uniqueBlocks[j].nameCol - info.nameCol) <= 2) {
+                            endRow = uniqueBlocks[j].startRow - 2; 
+                            break;
+                        }
+                    }
+                    
                     let blankCount = 0;
-                    for (let r = info.startRow; r < raw.length; r++) {
+                    for (let r = info.startRow; r < endRow; r++) {
                         if (!raw[r]) { 
                             blankCount++; 
-                            if (blankCount > 2) break; // 빈 줄 3개면 블록 종료
+                            if (blankCount > 3) break; 
                             continue; 
                         }
                         
                         let sName = String(raw[r][info.nameCol] || "").trim();
                         let sNumRaw = String(raw[r][info.numCol] || "").trim();
                         
-                        // 새로운 헤더를 만나면 블록 즉시 종료
-                        if (sName === "성명" || sName === "이름") break;
-
                         let checkTail = String(raw[r][Math.max(0, info.numCol-1)] || "") + sNumRaw + sName;
-                        if (checkTail.includes("합계") || sName === "남" || sName === "여" || sName.includes("재적")) {
+                        if (checkTail.includes("합계") || (sName === "남" || sName === "여")) {
                             break; 
                         }
                         
                         if (!sName && !sNumRaw) { 
                             blankCount++; 
-                            if (blankCount > 2) break; 
+                            if (blankCount > 3) break; 
                             continue; 
                         }
 
@@ -1200,7 +1207,7 @@
 
             let fallbackMsg = "무엇을 찾으시나요? 선생님 이름이나 학급명(전자2-1 등)을 포함해서 질문해주세요.😊";
             if (studentDB.length === 0) {
-                fallbackMsg += "<br><br><span style='font-size:0.85rem; color:#fca5a5;'>※ 학생 검색을 이용하시려면 좌측 1번 메뉴에서 [학생 명렬표] 엑셀 파일을 업로드하거나 클라우드 연동을 확인해주세요.</span>";
+                fallbackMsg += "<br><br><span style='font-size:0.85rem; color:#fca5a5;'>※ 학생 검색을 이용하시려면 좌측 1번 메뉴에서 [학생 명렬표] 엑셀 파일을 업로드해주세요.</span>";
             }
             return fallbackMsg;
         }
@@ -2189,9 +2196,9 @@
                     let warningHtml = c.crossHop > 0 ? `<div style="color:#ef4444; font-size:0.8rem; font-weight:bold; margin-top:6px;">⚠️ 전문/보통교과 교차 포함 (교실/실습실 이동 주의)</div>` : '';
                     html += `
                         <div style="background:rgba(0,0,0,0.3); padding:14px; border-radius:10px; margin-bottom:10px;">
-                            • <strong>1단계</strong>: ${c.teacherB}(${c.deptB}) 교사가 ${absentName} 교사의 결강 시간에 [${c.classB}] 수업 진행<br>
-                            • <strong>2단계</strong>: ${c.teacherC}(${c.deptC}) 교사가 ${c.teacherB} 교사의 ${c.timeB}교시에 [${c.classC}] 수업 진행<br>
-                            • <strong>3단계</strong>: ${absentName} 교사가 ${c.teacherC} 교사의 ${c.timeC}교시에 [${absentClass}] 수업 진행
+                            • <strong>1단계</strong>: ${c.teacherB}(${c.deptB}) 교사가 ${absentName} 교사의 결강 시간 대강<br>
+                            • <strong>2단계</strong>: ${c.teacherC}(${c.deptC}) 교사가 ${c.teacherB} 교사의 ${c.timeB}교시 [${c.classB}] 대강<br>
+                            • <strong>3단계</strong>: ${absentName} 교사가 ${c.teacherC} 교사의 ${c.timeC}교시 [${c.classC}] 대강
                             ${warningHtml}
                             <br>
                             <button class="btn purple" style="padding:8px 15px; margin-top:10px;"
@@ -2278,11 +2285,13 @@
         function generateUnifiedHWPPreview() {
             const keys = Object.keys(currentSelectedSwaps);
             if (keys.length === 0) {
-                document.getElementById('downloadDocBtn').disabled = true;
+                document.getElementById('copyTableBtn').disabled = true;
+                document.getElementById('downloadHwpBtn').disabled = true;
                 return;
             }
+            document.getElementById('copyTableBtn').disabled = false;
+            document.getElementById('downloadHwpBtn').disabled = false;
 
-            document.getElementById('downloadDocBtn').disabled = false;
             const absentName = teacherSelect.value;
             const tbody = document.getElementById('unifiedHwpTbody');
             tbody.innerHTML = '';
@@ -2336,7 +2345,6 @@
                     let dateB = getDateStringForDayInSameWeek(absentItem.dateStr, dayB);
                     let dateC = getDateStringForDayInSameWeek(absentItem.dateStr, dayC);
 
-                    // Row 1 (A 결강, B 대체)
                     tbody.innerHTML += `
                         <tr>
                             <td>${orig.sub}</td>
@@ -2350,7 +2358,6 @@
                             <td style="color:#0284c7; font-weight:bold;">${item.teacherB}</td>
                         </tr>
                     `;
-                    // Row 2 (B 결강, C 대체)
                     tbody.innerHTML += `
                         <tr>
                             <td>${classB_info.sub}</td>
@@ -2364,7 +2371,6 @@
                             <td style="color:#0284c7; font-weight:bold;">${item.teacherC}</td>
                         </tr>
                     `;
-                    // Row 3 (C 결강, A 대체)
                     tbody.innerHTML += `
                         <tr>
                             <td>${classC_info.sub}</td>
@@ -2378,8 +2384,6 @@
                             <td style="color:#0284c7; font-weight:bold;">${absentName}</td>
                         </tr>
                     `;
-
-                    // 요약 정보 추가
                     tbody.innerHTML += `
                         <tr style="background-color:rgba(239, 68, 68, 0.05);">
                             <td colspan="9" style="text-align:left; padding:12px 15px; font-size:0.95rem; line-height: 1.6;">
@@ -2394,8 +2398,28 @@
             });
         }
 
-        // 🔥 워드(.doc) 다운로드 함수 - 한글(hwp)에서도 완벽하게 열립니다.
-        function downloadTableAsWord() {
+        // 🔥 1. 표 복사 기능 (한글 파일에 Ctrl+V 용도)
+        function copyTableToClipboard() {
+            const table = document.querySelector('.hwp-table');
+            if (!table) return;
+
+            const range = document.createRange();
+            range.selectNode(table);
+            const selection = window.getSelection();
+            selection.removeAllRanges();
+            selection.addRange(range);
+
+            try {
+                document.execCommand('copy');
+                alert('✅ 표가 클립보드에 복사되었습니다!\n\n이제 기안하실 한글(HWP) 파일을 열고\n[Ctrl + V]를 눌러 그대로 붙여넣기 하세요.');
+            } catch (err) {
+                alert('복사에 실패했습니다. 표를 직접 드래그해서 복사해주세요.');
+            }
+            selection.removeAllRanges(); 
+        }
+
+        // 🔥 2. HWP 확장자로 파일 다운로드 기능
+        function downloadTableAsHwp() {
             const tbody = document.getElementById('unifiedHwpTbody');
             if (tbody.children.length === 0) {
                 alert("출력할 대체원 데이터가 없습니다.");
@@ -2416,11 +2440,11 @@
             ${tableHtml}
             </body></html>`;
 
-            let blob = new Blob(['\ufeff', html], { type: 'application/msword' });
+            let blob = new Blob(['\ufeff', html], { type: 'application/x-hwp' });
             let url = URL.createObjectURL(blob);
             let a = document.createElement('a');
             a.href = url;
-            a.download = '결보강_대체원.doc';
+            a.download = '결보강_대체원.hwp';
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
