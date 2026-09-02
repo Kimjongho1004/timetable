@@ -365,14 +365,12 @@
                 </h2>
                 <div class="upload-area">
                     <div class="file-input-wrapper">
-                        <!-- 🔥 교사 시간표 수동 업로드 버튼 -->
                         <label for="excelUpload" class="file-input-btn" id="uploadLabel">
                             📁 교무부 시간표 엑셀 업로드 (클릭)
                         </label>
                         <input type="file" id="excelUpload" accept=".xlsx, .xls, .csv" style="display:none;">
                     </div>
                     <div class="file-input-wrapper" style="margin-top: 10px;">
-                        <!-- 🔥 학생 명렬표 수동 업로드 버튼 복구 -->
                         <label for="rosterUpload" class="file-input-btn" id="rosterLabel">
                             📁 학생 명렬표 엑셀 업로드 (선택)
                         </label>
@@ -472,7 +470,7 @@
                     </tbody>
                 </table>
 
-                <div style="text-align: center; margin-top: 25px; display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
+                <div style="margin-top: 25px; display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
                     <button class="btn purple" style="padding: 14px 20px; font-size: 1.05rem; flex: 1; min-width: 200px;" onclick="runFinalValidation()">
                         ✔️ 최종 오류 검토 (중복/누락 확인)
                     </button>
@@ -567,12 +565,6 @@
         const SEMESTER_END_DATE = new Date("2027-01-07"); 
 
         const homeroomTeachers = ["조태일", "주원창", "배하영", "도병화", "여금복", "신동분", "오시우", "양담경", "안진희", "김종호", "김주리", "김옥희", "황영준", "최민성", "조향숙", "현경호", "신수원", "이푸름"];
-
-        function parseClassInfo(str) {
-            if(!str) return { room: "-", sub: "-" };
-            const parts = str.trim().split(/\s+/);
-            return parts.length >= 2 ? { room: parts[0], sub: parts.slice(1).join(" ") } : { room: "전학급", sub: str };
-        }
 
         const excelUpload = document.getElementById('excelUpload');
         const rosterUpload = document.getElementById('rosterUpload');
@@ -675,6 +667,12 @@
                 const reply = processChat(text);
                 appendMessage('bot', reply);
             }, 400); 
+        }
+
+        function parseClassInfo(str) {
+            if(!str) return { room: "-", sub: "-" };
+            const parts = str.trim().split(/\s+/);
+            return parts.length >= 2 ? { room: parts[0], sub: parts.slice(1).join(" ") } : { room: "전학급", sub: str };
         }
 
         function findClassInText(text) {
@@ -872,8 +870,10 @@
                         let sName = String(raw[r][info.nameCol] || "").trim();
                         let sNumRaw = String(raw[r][info.numCol] || "").trim();
                         
+                        if (sName === "성명" || sName === "이름") break; 
+                        
                         let checkTail = String(raw[r][Math.max(0, info.numCol-1)] || "") + sNumRaw + sName;
-                        if (checkTail.includes("합계") || (sName === "남" || sName === "여")) {
+                        if (checkTail.includes("합계") || sName === "남" || sName === "여" || sName.includes("재적")) {
                             break; 
                         }
                         
@@ -2199,9 +2199,9 @@
                     let warningHtml = c.crossHop > 0 ? `<div style="color:#ef4444; font-size:0.8rem; font-weight:bold; margin-top:6px;">⚠️ 전문/보통교과 교차 포함 (교실/실습실 이동 주의)</div>` : '';
                     html += `
                         <div style="background:rgba(0,0,0,0.3); padding:14px; border-radius:10px; margin-bottom:10px;">
-                            • <strong>1단계</strong>: ${c.teacherB}(${c.deptB}) 교사가 ${absentName} 교사의 결강 시간 대강<br>
-                            • <strong>2단계</strong>: ${c.teacherC}(${c.deptC}) 교사가 ${c.teacherB} 교사의 ${c.timeB}교시 [${c.classB}] 대강<br>
-                            • <strong>3단계</strong>: ${absentName} 교사가 ${c.teacherC} 교사의 ${c.timeC}교시 [${c.classC}] 대강
+                            • <strong>1단계</strong>: ${c.teacherB}(${c.deptB}) 교사가 ${absentName} 교사의 결강 시간에 [${c.classB}] 수업 진행<br>
+                            • <strong>2단계</strong>: ${c.teacherC}(${c.deptC}) 교사가 ${c.teacherB} 교사의 ${c.timeB}교시에 [${c.classC}] 수업 진행<br>
+                            • <strong>3단계</strong>: ${absentName} 교사가 ${c.teacherC} 교사의 ${c.timeC}교시에 [${absentClass}] 수업 진행
                             ${warningHtml}
                             <br>
                             <button class="btn purple" style="padding:8px 15px; margin-top:10px;"
