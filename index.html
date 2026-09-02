@@ -1356,7 +1356,7 @@
         }
 
         function clearStorage() {
-            if(confirm("기억된 시간표 데이터를 초기화하시겠습니까?")) {
+            if(confirm("기억된 모든 데이터(시간표, 명렬표 등)를 초기화하시겠습니까?")) {
                 localStorage.removeItem('schoolTimetableData');
                 localStorage.removeItem('schoolClassData');
                 localStorage.removeItem('schoolStudentData');
@@ -2429,23 +2429,53 @@
                 return;
             }
 
-            let tableHtml = document.querySelector('.hwp-table').outerHTML;
-            let style = `
-                <style>
-                    @page { size: A4 landscape; margin: 15mm; }
-                    @page Section1 { size: 841.9pt 595.3pt; mso-page-orientation: landscape; margin: 1.0in 1.0in 1.0in 1.0in; }
-                    div.Section1 { page: Section1; }
-                    table { border-collapse: collapse; width: 100%; font-family: 'Batang', '바탕', serif; font-size: 11pt; border: 1px solid black; }
-                    th, td { border: 1px solid black; padding: 10px 5px; text-align: center; vertical-align: middle; color: black; word-break: keep-all; }
-                    th { background-color: #f1f5f9; font-weight: bold; }
-                </style>
-            `;
+            let clonedTable = document.querySelector('.hwp-table').cloneNode(true);
+            
+            // HWP 완벽 호환을 위한 구형 HTML 속성 강제 부여
+            clonedTable.setAttribute('border', '1');
+            clonedTable.setAttribute('cellspacing', '0');
+            clonedTable.setAttribute('cellpadding', '6');
+            clonedTable.style.borderCollapse = 'collapse';
+            clonedTable.style.width = '100%';
+            clonedTable.style.border = '1px solid black';
+
+            let cells = clonedTable.querySelectorAll('th, td');
+            cells.forEach(cell => {
+                cell.style.border = '1px solid black';
+                cell.style.fontFamily = 'Batang, 바탕, serif';
+                cell.style.fontSize = '11pt';
+                cell.style.textAlign = 'center';
+                cell.style.verticalAlign = 'middle';
+                
+                if (cell.getAttribute('colspan') !== '9') {
+                    // 글자 쪼개짐 완벽 방지 (HWP 맞춤형)
+                    cell.style.whiteSpace = 'nowrap';
+                    cell.style.wordBreak = 'keep-all';
+                    cell.innerHTML = `<nobr>${cell.innerHTML}</nobr>`;
+                } else {
+                    cell.style.textAlign = 'left';
+                    cell.style.padding = '10px 15px';
+                }
+            });
+
+            let ths = clonedTable.querySelectorAll('th');
+            const widths = ['11%', '11%', '7%', '10%', '13%', '13%', '11%', '7%', '17%'];
+            ths.forEach((th, i) => {
+                th.style.backgroundColor = '#eeeeee'; 
+                th.style.fontWeight = 'bold';
+                if (widths[i]) {
+                    th.setAttribute('width', widths[i]);
+                    th.style.width = widths[i];
+                }
+            });
+
+            let tableHtml = clonedTable.outerHTML;
             let html = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">
-            <head><meta charset="utf-8"><title>결보강 대체원</title>${style}</head><body>
-            <div class="Section1">
-            <h2 style="text-align:center; font-family: 'Batang', '바탕', serif;">결·보강 수업 대체원</h2>
+            <head><meta charset="utf-8"><title>결보강 대체원</title></head>
+            <body style="font-family: 'Batang', '바탕', serif;">
+            <h2 style="text-align:center; font-size:16pt; font-weight:bold;">결·보강 수업 대체원</h2>
+            <br>
             ${tableHtml}
-            </div>
             </body></html>`;
 
             let blob = new Blob(['\ufeff', html], { type: 'application/x-hwp' });
@@ -2456,6 +2486,10 @@
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
+
+            setTimeout(() => {
+                alert('✅ HWP 파일 다운로드가 완료되었습니다.\n\n📌 꿀팁: 한글 프로그램에서 여신 후, [F7] 키를 눌러 용지를 "가로"로 설정하시면 표가 원본처럼 넓고 예쁘게 펴집니다!');
+            }, 500);
         }
 
         function runFinalValidation() {
