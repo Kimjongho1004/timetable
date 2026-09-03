@@ -54,11 +54,19 @@
         .panel-title { 
             font-size: 1.15rem; font-weight: 800; margin-top: 0; margin-bottom: 20px; 
             color: var(--primary); display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 12px;
+            cursor: pointer; user-select: none;
         }
+        .panel-title:hover { opacity: 0.8; }
 
         .left-sidebar { display: flex; flex-direction: column; gap: 20px; }
         
-        .upload-area { display: flex; gap: 10px; align-items: center; flex-direction: column; }
+        /* 아코디언 애니메이션용 래퍼 */
+        #dataLoadContent {
+            display: flex; flex-direction: column; gap: 10px; overflow: hidden;
+            transition: max-height 0.4s ease-in-out, opacity 0.4s ease; max-height: 1000px; opacity: 1;
+        }
+
+        .upload-area { display: flex; gap: 10px; align-items: center; flex-direction: column; width: 100%; }
         .file-input-wrapper { width: 100%; }
         
         .file-input-btn { 
@@ -69,10 +77,10 @@
             white-space: normal; word-break: keep-all; line-height: 1.4;
         }
         .file-input-btn:hover { border-color: var(--primary); color: var(--primary); background: rgba(56, 189, 248, 0.05); }
-        .file-input-btn.loaded { border-color: var(--success); color: var(--success); background: rgba(16, 185, 129, 0.08); border-style: solid; }
+        .file-input-btn.loaded { border-color: var(--warning); color: var(--warning); background: rgba(245, 158, 11, 0.08); border-style: solid; }
 
         .github-status-box {
-            margin-top: 10px; padding: 12px; border-radius: 8px; font-size: 0.85rem; color: var(--text-dim);
+            margin-top: 5px; padding: 12px; border-radius: 8px; font-size: 0.85rem; color: var(--text-dim);
             background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.05); width: 100%; box-sizing: border-box;
             display: flex; flex-direction: column; gap: 6px;
         }
@@ -359,33 +367,41 @@
         <!-- 💡 좌측: 파일 & 설정 패널 -->
         <div class="left-sidebar">
             <div class="panel">
-                <h2 class="panel-title">
-                    <span>1. 데이터 로드</span>
-                    <button class="btn danger" id="resetBtn" style="display:none;" onclick="clearStorage()">초기화</button>
+                <h2 class="panel-title" onclick="toggleDataLoadPanel()" title="클릭하여 접기/펴기">
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <span id="dataLoadToggleIcon" style="font-size:0.9rem; color:var(--primary);">▼</span> 1. 데이터 로드
+                    </div>
+                    <button class="btn danger" id="resetBtn" style="display:none;" onclick="clearStorage(event)">초기화</button>
                 </h2>
-                <div class="upload-area">
-                    <div class="file-input-wrapper">
-                        <label for="excelUpload" class="file-input-btn" id="uploadLabel">
-                            📁 교무부 시간표 엑셀 업로드 (클릭)
-                        </label>
-                        <input type="file" id="excelUpload" accept=".xlsx, .xls, .csv" style="display:none;">
-                    </div>
-                    <div class="file-input-wrapper" style="margin-top: 10px;">
-                        <label for="rosterUpload" class="file-input-btn" id="rosterLabel">
-                            📁 학생 명렬표 엑셀 업로드 (선택)
-                        </label>
-                        <input type="file" id="rosterUpload" accept=".xlsx, .xls, .csv" style="display:none;">
-                    </div>
-                    <!-- 🔥 깃허브 연동 상태 알림판 -->
-                    <div class="github-status-box" id="githubStatusBox">
-                        <strong>☁️ 클라우드(GitHub) 자동 연동</strong>
-                        <div class="status-row">
-                            <span>🗓️ 학사일정 (events.xlsx)</span>
-                            <span id="eventStatus" style="color:var(--text-dim);">대기 중...</span>
+                <div id="dataLoadContent">
+                    <div class="upload-area">
+                        <div class="file-input-wrapper">
+                            <label for="excelUpload" class="file-input-btn" id="uploadLabel">
+                                📁 교무부 시간표 엑셀 업로드 (클릭)
+                            </label>
+                            <input type="file" id="excelUpload" accept=".xlsx, .xls, .csv" style="display:none;">
                         </div>
-                        <div class="status-row">
-                            <span>🎓 명렬표 (roster.xlsx)</span>
-                            <span id="rosterStatus" style="color:var(--text-dim);">대기 중...</span>
+                        <div class="file-input-wrapper" style="margin-top: 10px;">
+                            <label for="rosterUpload" class="file-input-btn" id="rosterLabel">
+                                📁 학생 명렬표 엑셀 업로드 (선택)
+                            </label>
+                            <input type="file" id="rosterUpload" accept=".xlsx, .xls, .csv" style="display:none;">
+                        </div>
+                        
+                        <div class="github-status-box" id="githubStatusBox">
+                            <strong>☁️ 클라우드(GitHub) 자동 연동</strong>
+                            <div class="status-row">
+                                <span>🗓️ 시간표 (timetable.xlsx)</span>
+                                <span id="timetableStatus" style="color:var(--text-dim);">대기 중...</span>
+                            </div>
+                            <div class="status-row">
+                                <span>🗓️ 학사일정 (events.xlsx)</span>
+                                <span id="eventStatus" style="color:var(--text-dim);">대기 중...</span>
+                            </div>
+                            <div class="status-row">
+                                <span>🎓 명렬표 (roster.xlsx)</span>
+                                <span id="rosterStatus" style="color:var(--text-dim);">대기 중...</span>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -585,9 +601,51 @@
         document.addEventListener('DOMContentLoaded', () => {
             addDateInput();
             loadSchoolEvents(); 
-            loadRoster(); 
-            loadFromStorage();  
+            
+            // 1. 명렬표 하이브리드 로드 (수동 데이터가 있으면 클라우드 무시)
+            if (localStorage.getItem('isManualRoster') === 'true') {
+                const savedStudents = localStorage.getItem('schoolStudentData');
+                if (savedStudents) {
+                    studentDB = JSON.parse(savedStudents);
+                    document.getElementById('rosterLabel').innerHTML = `📁 수동 업로드 명렬표 적용 중 (${studentDB.length}명)`;
+                    document.getElementById('rosterLabel').classList.add('loaded');
+                    document.getElementById('rosterStatus').innerHTML = `<span style="color:var(--text-dim);">수동 업로드 적용됨</span>`;
+                    document.getElementById('resetBtn').style.display = 'block';
+                }
+            } else {
+                loadRosterFromCloud();
+            }
+
+            // 2. 시간표 하이브리드 로드 (수동 데이터가 있으면 클라우드 무시)
+            if (localStorage.getItem('isManualTimetable') === 'true') {
+                const savedData = localStorage.getItem('schoolTimetableData');
+                const savedClass = localStorage.getItem('schoolClassData');
+                if (savedData) {
+                    teacherSchedules = JSON.parse(savedData);
+                    if(savedClass) classSchedules = JSON.parse(savedClass);
+                    uploadLabel.innerText = `📁 수동 업로드 시간표 적용 중`;
+                    uploadLabel.classList.add('loaded');
+                    document.getElementById('timetableStatus').innerHTML = `<span style="color:var(--text-dim);">수동 업로드 적용됨</span>`;
+                    document.getElementById('resetBtn').style.display = 'block';
+                    initDropdowns();
+                }
+            } else {
+                loadTimetableFromCloud();
+            }
         });
+
+        // 🔥 아코디언 토글 기능
+        function toggleDataLoadPanel() {
+            const content = document.getElementById('dataLoadContent');
+            const icon = document.getElementById('dataLoadToggleIcon');
+            if (content.style.display === 'none') {
+                content.style.display = 'flex';
+                icon.innerText = '▼';
+            } else {
+                content.style.display = 'none';
+                icon.innerText = '▶';
+            }
+        }
 
         let isInitialChat = true;
         function clearInitialText(el) {
@@ -667,12 +725,6 @@
                 const reply = processChat(text);
                 appendMessage('bot', reply);
             }, 400); 
-        }
-
-        function parseClassInfo(str) {
-            if(!str) return { room: "-", sub: "-" };
-            const parts = str.trim().split(/\s+/);
-            return parts.length >= 2 ? { room: parts[0], sub: parts.slice(1).join(" ") } : { room: "전학급", sub: str };
         }
 
         function findClassInText(text) {
@@ -873,7 +925,7 @@
                         if (sName === "성명" || sName === "이름") break; 
                         
                         let checkTail = String(raw[r][Math.max(0, info.numCol-1)] || "") + sNumRaw + sName;
-                        if (checkTail.includes("합계") || sName === "남" || sName === "여" || sName.includes("재적")) {
+                        if (checkTail.includes("합계") || (sName === "남" || sName === "여") || sName.includes("재적")) {
                             break; 
                         }
                         
@@ -909,7 +961,7 @@
 
         function processChat(text) {
             if (text.replace(/\s+/g, "").includes("무엇을할수있") || text.includes("기능") || text.includes("도움말") || text === "넌 무엇을 할 수 있지?") {
-                return `🤖 **T-Bot 기능 안내**<br><br>다음과 같이 편하게 물어보시면 다 대답해 드립니다!<br>• 👩‍🏫 **교사 시간표**: "김종호 선생님 오늘 시간표"<br>• 🏫 **학급 시간표**: "전자2-2 지금 무슨 수업해?"<br>• 🎓 **학생 찾기**: "강시윤 지금 무슨 시간이지?", "김이삭"<br>• 🔍 **조건 검색**: "오늘 2교시 수업 없는 쌤", "2기2 소통 선생님 누구?"`;
+                return `🤖 **T-Bot 기능 안내**<br><br>다음과 같이 편하게 물어보시면 다 대답해 드립니다!<br>• 👩‍🏫 **교사 시간표**: "김종호 선생님 오늘 시간표"<br>• 🏫 **학급 시간표**: "전자2-1 지금 무슨 수업해?"<br>• 🎓 **학생 찾기**: "권영은 지금 무슨 시간이지?", "김이삭"<br>• 🔍 **조건 검색**: "오늘 2교시 수업 없는 쌤", "2기2 소통 선생님 누구?"`;
             }
 
             if (teacherSchedules.length === 0) {
@@ -1266,7 +1318,31 @@
                 });
         }
 
-        function loadRoster() {
+        // 🔥 시간표 클라우드 자동 불러오기 (수동 덮어쓰기가 없을 때만 실행)
+        function loadTimetableFromCloud() {
+            fetch('timetable.xlsx?t=' + new Date().getTime())
+                .then(response => {
+                    if (!response.ok) throw new Error("시간표 파일 없음");
+                    let dateStr = "최신버전";
+                    const lastModified = response.headers.get('Last-Modified');
+                    if (lastModified) {
+                        const d = new Date(lastModified);
+                        dateStr = `${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')} 업데이트`;
+                    }
+                    document.getElementById('timetableStatus').innerHTML = `<span style="color:var(--success); font-weight:bold;">연동 완료 (${dateStr})</span>`;
+                    return response.arrayBuffer();
+                })
+                .then(data => {
+                    const workbook = XLSX.read(new Uint8Array(data), { type: 'array' });
+                    parseSchoolExcel(workbook, "클라우드 자동 연동", false);
+                })
+                .catch(error => {
+                    document.getElementById('timetableStatus').innerHTML = `<span style="color:var(--warning);">파일 없음 (timetable.xlsx)</span>`;
+                });
+        }
+
+        // 🔥 명렬표 클라우드 자동 불러오기 (수동 덮어쓰기가 없을 때만 실행)
+        function loadRosterFromCloud() {
             fetch('roster.xlsx?t=' + new Date().getTime())
                 .then(response => {
                     if (!response.ok) throw new Error("명렬표 파일 없음");
@@ -1275,12 +1351,10 @@
                 .then(data => {
                     const workbook = XLSX.read(new Uint8Array(data), { type: 'array' });
                     studentDB = processRosterData(workbook);
-                    let el = document.getElementById('rosterStatus');
-                    if (el) el.innerHTML = `<span style="color:var(--success); font-weight:bold;">연동 완료 (${studentDB.length}명)</span>`;
+                    document.getElementById('rosterStatus').innerHTML = `<span style="color:var(--success); font-weight:bold;">연동 완료 (${studentDB.length}명)</span>`;
                 })
                 .catch(error => {
-                    let el = document.getElementById('rosterStatus');
-                    if (el) el.innerHTML = `<span style="color:var(--warning);">파일 없음 (roster.xlsx)</span>`;
+                    document.getElementById('rosterStatus').innerHTML = `<span style="color:var(--warning);">파일 없음 (roster.xlsx)</span>`;
                 });
         }
 
@@ -1324,42 +1398,14 @@
             }
         }
 
-        function saveToStorage(teacherData, classData) { 
-            localStorage.setItem('schoolTimetableData', JSON.stringify(teacherData)); 
-            if(classData) localStorage.setItem('schoolClassData', JSON.stringify(classData));
-        }
-
-        function loadFromStorage() {
-            const savedData = localStorage.getItem('schoolTimetableData');
-            const savedClass = localStorage.getItem('schoolClassData');
-            const savedStudents = localStorage.getItem('schoolStudentData');
-            
-            if (savedData) {
-                try {
-                    teacherSchedules = JSON.parse(savedData);
-                    if(savedClass) classSchedules = JSON.parse(savedClass);
-                    if(savedStudents) studentDB = JSON.parse(savedStudents);
-                    
-                    uploadLabel.innerText = `📁 이전에 업로드한 시간표 자동 로드 완료`;
-                    uploadLabel.classList.add('loaded');
-                    if (studentDB && studentDB.length > 0) {
-                        const rLabel = document.getElementById('rosterLabel');
-                        if (rLabel) {
-                            rLabel.innerText = `📁 명렬표 로드 완료 (${studentDB.length}명)`;
-                            rLabel.classList.add('loaded');
-                        }
-                    }
-                    resetBtn.style.display = 'block';
-                    initDropdowns();
-                } catch (e) { console.error(e); }
-            }
-        }
-
-        function clearStorage() {
-            if(confirm("기억된 모든 데이터(시간표, 명렬표 등)를 초기화하시겠습니까?")) {
+        function clearStorage(e) {
+            if(e) e.stopPropagation(); // 아코디언 토글 방지
+            if(confirm("기억된 수동 업로드 데이터를 모두 초기화하고 클라우드 연동으로 돌아가시겠습니까?")) {
                 localStorage.removeItem('schoolTimetableData');
                 localStorage.removeItem('schoolClassData');
                 localStorage.removeItem('schoolStudentData');
+                localStorage.removeItem('isManualTimetable');
+                localStorage.removeItem('isManualRoster');
                 location.reload();
             }
         }
@@ -1371,7 +1417,8 @@
             reader.onload = function(evt) {
                 const data = new Uint8Array(evt.target.result);
                 const workbook = XLSX.read(data, { type: 'array' });
-                parseSchoolExcel(workbook, file.name);
+                // 사용자가 수동 업로드하면 isManual = true 로 전달
+                parseSchoolExcel(workbook, file.name, true);
             };
             reader.readAsArrayBuffer(file);
         });
@@ -1383,24 +1430,29 @@
             reader.onload = function(evt) {
                 const data = new Uint8Array(evt.target.result);
                 const workbook = XLSX.read(data, { type: 'array' });
-                parseRosterExcel(workbook, file.name);
+                parseRosterExcel(workbook, file.name, true);
             };
             reader.readAsArrayBuffer(file);
         });
 
-        function parseRosterExcel(workbook, fileName) {
+        function parseRosterExcel(workbook, fileName, isManual = false) {
             studentDB = processRosterData(workbook);
             if (studentDB.length > 0) {
-                localStorage.setItem('schoolStudentData', JSON.stringify(studentDB));
-                document.getElementById('rosterLabel').innerHTML = `📁 명렬표 로드 완료 (${studentDB.length}명)`;
-                document.getElementById('rosterLabel').classList.add('loaded');
-                alert(`명렬표 로드 성공! (총 ${studentDB.length}명)`);
+                if (isManual) {
+                    localStorage.setItem('schoolStudentData', JSON.stringify(studentDB));
+                    localStorage.setItem('isManualRoster', 'true');
+                    document.getElementById('rosterLabel').innerHTML = `📁 수동 업로드 명렬표 적용 완료`;
+                    document.getElementById('rosterLabel').classList.add('loaded');
+                    document.getElementById('rosterStatus').innerHTML = `<span style="color:var(--text-dim);">수동 업로드 우선 적용됨</span>`;
+                    document.getElementById('resetBtn').style.display = 'block';
+                    alert(`수동 업로드 성공! (총 ${studentDB.length}명)\n이후부터는 서버 버전 대신 이 파일이 우선 적용됩니다.`);
+                }
             } else {
                 alert("명렬표 데이터를 찾을 수 없습니다. 양식을 확인해주세요.");
             }
         }
 
-        function parseSchoolExcel(workbook, fileName) {
+        function parseSchoolExcel(workbook, fileName, isManual = false) {
             classSchedules = {}; 
 
             const eventSheetName = workbook.SheetNames.find(name => name.includes("학사일정") || name.includes("행사") || name.includes("제외"));
@@ -1597,15 +1649,20 @@
                 return alert("교사 시간표 데이터를 추출하지 못했습니다. 원본 파일 양식을 확인해주세요.");
             }
 
-            saveToStorage(teacherSchedules, classSchedules);
-            
-            if (fileName) {
-                uploadLabel.innerText = `📁 업로드 성공: ${fileName}`;
+            // 🔥 수동 모드일 때만 로컬스토리지에 덮어쓰기
+            if (isManual) {
+                localStorage.setItem('schoolTimetableData', JSON.stringify(teacherSchedules));
+                localStorage.setItem('schoolClassData', JSON.stringify(classSchedules));
+                localStorage.setItem('isManualTimetable', 'true');
+                uploadLabel.innerText = `📁 수동 업로드 시간표 적용 완료`;
+                uploadLabel.classList.add('loaded');
+                document.getElementById('timetableStatus').innerHTML = `<span style="color:var(--text-dim);">수동 업로드 우선 적용됨</span>`;
+                document.getElementById('resetBtn').style.display = 'block';
             } else {
-                uploadLabel.innerText = `📁 기본 시간표 원본 자동 로드 완료`;
+                uploadLabel.innerText = `☁️ 클라우드 시간표 연동됨`;
+                uploadLabel.classList.add('loaded');
             }
-            uploadLabel.classList.add('loaded');
-            resetBtn.style.display = 'block';
+
             initDropdowns();
         }
 
@@ -1618,6 +1675,16 @@
             
             emptyStatePanel.style.display = 'flex';
             resultWrapper.style.display = 'none';
+
+            // 🔥 데이터 로드가 성공하면 1.5초 뒤에 1번 메뉴를 스르륵 접음 (아코디언 자동)
+            setTimeout(() => {
+                const content = document.getElementById('dataLoadContent');
+                const icon = document.getElementById('dataLoadToggleIcon');
+                if (content && content.style.display !== 'none' && teacherSchedules.length > 0) {
+                    content.style.display = 'none';
+                    icon.innerText = '▶';
+                }
+            }, 1500);
         }
 
         function getDayOfWeek(dateStr) {
@@ -2431,7 +2498,6 @@
 
             let clonedTable = document.querySelector('.hwp-table').cloneNode(true);
             
-            // HWP 완벽 호환을 위한 구형 HTML 속성 강제 부여
             clonedTable.setAttribute('border', '1');
             clonedTable.setAttribute('cellspacing', '0');
             clonedTable.setAttribute('cellpadding', '6');
@@ -2448,7 +2514,6 @@
                 cell.style.verticalAlign = 'middle';
                 
                 if (cell.getAttribute('colspan') !== '9') {
-                    // 글자 쪼개짐 완벽 방지 (HWP 맞춤형)
                     cell.style.whiteSpace = 'nowrap';
                     cell.style.wordBreak = 'keep-all';
                     cell.innerHTML = `<nobr>${cell.innerHTML}</nobr>`;
@@ -2471,11 +2536,19 @@
 
             let tableHtml = clonedTable.outerHTML;
             let html = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">
-            <head><meta charset="utf-8"><title>결보강 대체원</title></head>
+            <head><meta charset="utf-8"><title>결보강 대체원</title>
+            <style>
+                @page { size: A4 landscape; margin: 15mm; }
+                @page Section1 { size: 841.9pt 595.3pt; mso-page-orientation: landscape; margin: 1.0in 1.0in 1.0in 1.0in; }
+                div.Section1 { page: Section1; }
+            </style>
+            </head>
             <body style="font-family: 'Batang', '바탕', serif;">
+            <div class="Section1">
             <h2 style="text-align:center; font-size:16pt; font-weight:bold;">결·보강 수업 대체원</h2>
             <br>
             ${tableHtml}
+            </div>
             </body></html>`;
 
             let blob = new Blob(['\ufeff', html], { type: 'application/x-hwp' });
@@ -2486,10 +2559,6 @@
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
-
-            setTimeout(() => {
-                alert('✅ HWP 파일 다운로드가 완료되었습니다.\n\n📌 꿀팁: 한글 프로그램에서 여신 후, [F7] 키를 눌러 용지를 "가로"로 설정하시면 표가 원본처럼 넓고 예쁘게 펴집니다!');
-            }, 500);
         }
 
         function runFinalValidation() {
