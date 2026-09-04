@@ -490,11 +490,10 @@
                     <button class="btn purple" style="padding: 14px 20px; font-size: 1.05rem; flex: 1; min-width: 200px;" onclick="runFinalValidation()">
                         ✔️ 최종 오류 검토 (중복/누락 확인)
                     </button>
-                    <!-- 🔥 표 복사하기 버튼 -->
                     <button class="btn action" style="padding: 14px 20px; font-size: 1.05rem; flex: 1; min-width: 200px;" onclick="copyTableToClipboard()" id="copyTableBtn" disabled>
                         📋 표 복사하기 (한글에 붙여넣기)
                     </button>
-                    <!-- 🔥 HWP 가로 문서 다운로드 버튼 -->
+                    <!-- 🔥 안내창이 없는 깔끔한 다운로드 버튼 -->
                     <button class="btn secondary" style="padding: 14px 20px; font-size: 1.05rem; flex: 1; min-width: 200px;" onclick="downloadTableAsHwp()" id="downloadHwpBtn" disabled>
                         📄 HWP 파일로 다운로드
                     </button>
@@ -635,7 +634,48 @@
             }
         });
 
-        // 🔥 아코디언 토글 기능
+        // 🔥 누락되었던 시간표 자동 다운로드 엔진 복구 완료!
+        function loadTimetableFromCloud() {
+            fetch('timetable.xlsx?t=' + new Date().getTime())
+                .then(response => {
+                    if (!response.ok) throw new Error("시간표 파일 없음");
+                    let dateStr = "최신버전";
+                    const lastModified = response.headers.get('Last-Modified');
+                    if (lastModified) {
+                        const d = new Date(lastModified);
+                        dateStr = `${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')} 업데이트`;
+                    }
+                    document.getElementById('timetableStatus').innerHTML = `<span style="color:var(--success); font-weight:bold;">연동 완료 (${dateStr})</span>`;
+                    return response.arrayBuffer();
+                })
+                .then(data => {
+                    const workbook = XLSX.read(new Uint8Array(data), { type: 'array' });
+                    parseSchoolExcel(workbook, "클라우드 자동 연동", false);
+                })
+                .catch(error => {
+                    document.getElementById('timetableStatus').innerHTML = `<span style="color:var(--warning);">파일 없음 (timetable.xlsx)</span>`;
+                });
+        }
+
+        // 🔥 누락되었던 명렬표 자동 다운로드 엔진 복구 완료!
+        function loadRosterFromCloud() {
+            fetch('roster.xlsx?t=' + new Date().getTime())
+                .then(response => {
+                    if (!response.ok) throw new Error("명렬표 파일 없음");
+                    return response.arrayBuffer();
+                })
+                .then(data => {
+                    const workbook = XLSX.read(new Uint8Array(data), { type: 'array' });
+                    studentDB = processRosterData(workbook);
+                    let el = document.getElementById('rosterStatus');
+                    if (el) el.innerHTML = `<span style="color:var(--success); font-weight:bold;">연동 완료 (${studentDB.length}명)</span>`;
+                })
+                .catch(error => {
+                    let el = document.getElementById('rosterStatus');
+                    if (el) el.innerHTML = `<span style="color:var(--warning);">파일 없음 (roster.xlsx)</span>`;
+                });
+        }
+
         function toggleDataLoadPanel() {
             const content = document.getElementById('dataLoadContent');
             const icon = document.getElementById('dataLoadToggleIcon');
@@ -799,6 +839,12 @@
                     }
                 } catch(e) {}
             });
+        }
+
+        function parseClassInfo(str) {
+            if(!str) return { room: "-", sub: "-" };
+            const parts = str.trim().split(/\s+/);
+            return parts.length >= 2 ? { room: parts[0], sub: parts.slice(1).join(" ") } : { room: "전학급", sub: str };
         }
 
         function getClassSubject(className, day, period) {
@@ -1316,46 +1362,6 @@
                 });
         }
 
-        // 🔥 시간표 클라우드 자동 불러오기
-        function loadTimetableFromCloud() {
-            fetch('timetable.xlsx?t=' + new Date().getTime())
-                .then(response => {
-                    if (!response.ok) throw new Error("시간표 파일 없음");
-                    let dateStr = "최신버전";
-                    const lastModified = response.headers.get('Last-Modified');
-                    if (lastModified) {
-                        const d = new Date(lastModified);
-                        dateStr = `${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')} 업데이트`;
-                    }
-                    document.getElementById('timetableStatus').innerHTML = `<span style="color:var(--success); font-weight:bold;">연동 완료 (${dateStr})</span>`;
-                    return response.arrayBuffer();
-                })
-                .then(data => {
-                    const workbook = XLSX.read(new Uint8Array(data), { type: 'array' });
-                    parseSchoolExcel(workbook, "클라우드 자동 연동", false);
-                })
-                .catch(error => {
-                    document.getElementById('timetableStatus').innerHTML = `<span style="color:var(--warning);">파일 없음 (timetable.xlsx)</span>`;
-                });
-        }
-
-        // 🔥 명렬표 클라우드 자동 불러오기
-        function loadRosterFromCloud() {
-            fetch('roster.xlsx?t=' + new Date().getTime())
-                .then(response => {
-                    if (!response.ok) throw new Error("명렬표 파일 없음");
-                    return response.arrayBuffer();
-                })
-                .then(data => {
-                    const workbook = XLSX.read(new Uint8Array(data), { type: 'array' });
-                    studentDB = processRosterData(workbook);
-                    document.getElementById('rosterStatus').innerHTML = `<span style="color:var(--success); font-weight:bold;">연동 완료 (${studentDB.length}명)</span>`;
-                })
-                .catch(error => {
-                    document.getElementById('rosterStatus').innerHTML = `<span style="color:var(--warning);">파일 없음 (roster.xlsx)</span>`;
-                });
-        }
-
         function addDateInput() {
             const today = new Date();
             const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
@@ -1393,6 +1399,37 @@
             } else {
                 teacherSelect.disabled = false;
                 teacherSelect.title = "";
+            }
+        }
+
+        function saveToStorage(teacherData, classData) { 
+            localStorage.setItem('schoolTimetableData', JSON.stringify(teacherData)); 
+            if(classData) localStorage.setItem('schoolClassData', JSON.stringify(classData));
+        }
+
+        function loadFromStorage() {
+            const savedData = localStorage.getItem('schoolTimetableData');
+            const savedClass = localStorage.getItem('schoolClassData');
+            const savedStudents = localStorage.getItem('schoolStudentData');
+            
+            if (savedData) {
+                try {
+                    teacherSchedules = JSON.parse(savedData);
+                    if(savedClass) classSchedules = JSON.parse(savedClass);
+                    if(savedStudents) studentDB = JSON.parse(savedStudents);
+                    
+                    document.getElementById('uploadLabel').innerText = `📁 이전에 업로드한 시간표 자동 로드 완료`;
+                    document.getElementById('uploadLabel').classList.add('loaded');
+                    if (studentDB && studentDB.length > 0) {
+                        const rLabel = document.getElementById('rosterLabel');
+                        if (rLabel) {
+                            rLabel.innerText = `📁 명렬표 로드 완료 (${studentDB.length}명)`;
+                            rLabel.classList.add('loaded');
+                        }
+                    }
+                    document.getElementById('resetBtn').style.display = 'block';
+                    initDropdowns();
+                } catch (e) { console.error(e); }
             }
         }
 
@@ -1650,13 +1687,13 @@
                 localStorage.setItem('schoolTimetableData', JSON.stringify(teacherSchedules));
                 localStorage.setItem('schoolClassData', JSON.stringify(classSchedules));
                 localStorage.setItem('isManualTimetable', 'true');
-                uploadLabel.innerText = `📁 수동 업로드 시간표 적용 완료`;
-                uploadLabel.classList.add('loaded');
+                document.getElementById('uploadLabel').innerText = `📁 수동 업로드 시간표 적용 완료`;
+                document.getElementById('uploadLabel').classList.add('loaded');
                 document.getElementById('timetableStatus').innerHTML = `<span style="color:var(--text-dim);">수동 업로드 우선 적용됨</span>`;
                 document.getElementById('resetBtn').style.display = 'block';
             } else {
-                uploadLabel.innerText = `☁️ 클라우드 시간표 연동됨`;
-                uploadLabel.classList.add('loaded');
+                document.getElementById('uploadLabel').innerText = `☁️ 클라우드 시간표 연동됨`;
+                document.getElementById('uploadLabel').classList.add('loaded');
             }
 
             initDropdowns();
@@ -2484,7 +2521,7 @@
             selection.removeAllRanges(); 
         }
 
-        // 🔥 2. HWP 다운로드 
+        // 🔥 2. HWP 가로 인쇄 속성을 주입한 다운로드 기능
         function downloadTableAsHwp() {
             const tbody = document.getElementById('unifiedHwpTbody');
             if (tbody.children.length === 0) {
