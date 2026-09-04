@@ -54,18 +54,10 @@
         .panel-title { 
             font-size: 1.15rem; font-weight: 800; margin-top: 0; margin-bottom: 20px; 
             color: var(--primary); display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 12px;
-            cursor: pointer; user-select: none;
         }
-        .panel-title:hover { opacity: 0.8; }
 
         .left-sidebar { display: flex; flex-direction: column; gap: 20px; }
         
-        /* 아코디언 애니메이션용 래퍼 */
-        #dataLoadContent {
-            display: flex; flex-direction: column; gap: 10px; overflow: hidden;
-            transition: max-height 0.4s ease-in-out, opacity 0.4s ease; max-height: 1000px; opacity: 1;
-        }
-
         .upload-area { display: flex; gap: 10px; align-items: center; flex-direction: column; width: 100%; }
         .file-input-wrapper { width: 100%; }
         
@@ -367,43 +359,39 @@
         <!-- 💡 좌측: 파일 & 설정 패널 -->
         <div class="left-sidebar">
             <div class="panel">
-                <h2 class="panel-title" onclick="toggleDataLoadPanel()" title="클릭하여 접기/펴기">
-                    <div style="display:flex; align-items:center; gap:8px;">
-                        <span id="dataLoadToggleIcon" style="font-size:0.9rem; color:var(--primary);">▼</span> 1. 데이터 로드
-                    </div>
+                <h2 class="panel-title">
+                    <span>1. 데이터 로드</span>
                     <button class="btn danger" id="resetBtn" style="display:none;" onclick="clearStorage(event)">초기화</button>
                 </h2>
-                <div id="dataLoadContent">
-                    <div class="upload-area">
-                        <div class="file-input-wrapper">
-                            <!-- 🔥 교사 시간표 수동 업로드 버튼 -->
-                            <label for="excelUpload" class="file-input-btn" id="uploadLabel">
-                                📁 교무부 시간표 엑셀 업로드 (클릭)
-                            </label>
-                            <input type="file" id="excelUpload" accept=".xlsx, .xls, .csv" style="display:none;">
+                <div class="upload-area">
+                    <div class="file-input-wrapper">
+                        <!-- 🔥 교사 시간표 수동 업로드 버튼 -->
+                        <label for="excelUpload" class="file-input-btn" id="uploadLabel">
+                            📁 교무부 시간표 엑셀 업로드 (클릭)
+                        </label>
+                        <input type="file" id="excelUpload" accept=".xlsx, .xls, .csv" style="display:none;">
+                    </div>
+                    <div class="file-input-wrapper" style="margin-top: 10px;">
+                        <!-- 🔥 학생 명렬표 수동 업로드 버튼 -->
+                        <label for="rosterUpload" class="file-input-btn" id="rosterLabel">
+                            📁 학생 명렬표 엑셀 업로드 (선택)
+                        </label>
+                        <input type="file" id="rosterUpload" accept=".xlsx, .xls, .csv" style="display:none;">
+                    </div>
+                    <!-- 🔥 깃허브 연동 상태 알림판 -->
+                    <div class="github-status-box" id="githubStatusBox">
+                        <strong>☁️ 클라우드(GitHub) 자동 연동</strong>
+                        <div class="status-row">
+                            <span>🗓️ 시간표 (timetable.xlsx)</span>
+                            <span id="timetableStatus" style="color:var(--text-dim);">대기 중...</span>
                         </div>
-                        <div class="file-input-wrapper" style="margin-top: 10px;">
-                            <!-- 🔥 학생 명렬표 수동 업로드 버튼 -->
-                            <label for="rosterUpload" class="file-input-btn" id="rosterLabel">
-                                📁 학생 명렬표 엑셀 업로드 (선택)
-                            </label>
-                            <input type="file" id="rosterUpload" accept=".xlsx, .xls, .csv" style="display:none;">
+                        <div class="status-row">
+                            <span>🗓️ 학사일정 (events.xlsx)</span>
+                            <span id="eventStatus" style="color:var(--text-dim);">대기 중...</span>
                         </div>
-                        <!-- 🔥 깃허브 연동 상태 알림판 -->
-                        <div class="github-status-box" id="githubStatusBox">
-                            <strong>☁️ 클라우드(GitHub) 자동 연동</strong>
-                            <div class="status-row">
-                                <span>🗓️ 시간표 (timetable.xlsx)</span>
-                                <span id="timetableStatus" style="color:var(--text-dim);">대기 중...</span>
-                            </div>
-                            <div class="status-row">
-                                <span>🗓️ 학사일정 (events.xlsx)</span>
-                                <span id="eventStatus" style="color:var(--text-dim);">대기 중...</span>
-                            </div>
-                            <div class="status-row">
-                                <span>🎓 명렬표 (roster.xlsx)</span>
-                                <span id="rosterStatus" style="color:var(--text-dim);">대기 중...</span>
-                            </div>
+                        <div class="status-row">
+                            <span>🎓 명렬표 (roster.xlsx)</span>
+                            <span id="rosterStatus" style="color:var(--text-dim);">대기 중...</span>
                         </div>
                     </div>
                 </div>
@@ -496,7 +484,7 @@
                     <button class="btn action" style="padding: 14px 20px; font-size: 1.05rem; flex: 1; min-width: 200px;" onclick="copyTableToClipboard()" id="copyTableBtn" disabled>
                         📋 표 복사하기 (한글에 붙여넣기)
                     </button>
-                    <!-- 🔥 HWP 다운로드 버튼 (안내창 제거됨) -->
+                    <!-- 🔥 HWP 가로 문서 다운로드 버튼 -->
                     <button class="btn secondary" style="padding: 14px 20px; font-size: 1.05rem; flex: 1; min-width: 200px;" onclick="downloadTableAsHwp()" id="downloadHwpBtn" disabled>
                         📄 HWP 파일로 다운로드
                     </button>
@@ -636,19 +624,6 @@
                 loadTimetableFromCloud();
             }
         });
-
-        // 🔥 아코디언 토글 기능
-        function toggleDataLoadPanel() {
-            const content = document.getElementById('dataLoadContent');
-            const icon = document.getElementById('dataLoadToggleIcon');
-            if (content.style.display === 'none') {
-                content.style.display = 'flex';
-                icon.innerText = '▼';
-            } else {
-                content.style.display = 'none';
-                icon.innerText = '▶';
-            }
-        }
 
         let isInitialChat = true;
         function clearInitialText(el) {
@@ -1324,7 +1299,6 @@
                 });
         }
 
-        // 🔥 시간표 클라우드 자동 불러오기 복구
         function loadTimetableFromCloud() {
             fetch('timetable.xlsx?t=' + new Date().getTime())
                 .then(response => {
@@ -1347,7 +1321,6 @@
                 });
         }
 
-        // 🔥 명렬표 클라우드 자동 불러오기 복구
         function loadRosterFromCloud() {
             fetch('roster.xlsx?t=' + new Date().getTime())
                 .then(response => {
@@ -1491,7 +1464,7 @@
         function parseSchoolExcel(workbook, fileName, isManual = false) {
             classSchedules = {}; 
 
-            const eventSheetName = workbook.SheetNames.find(name => name.includes("학사일정") || name.includes("행사") || name.includes("제외"));
+            const eventSheetName = workbook.SheetNames.find(name => String(name).includes("학사일정") || String(name).includes("행사") || String(name).includes("제외"));
             if (eventSheetName) {
                 schoolEvents = {};
                 const eventSheet = workbook.Sheets[eventSheetName];
@@ -1710,16 +1683,6 @@
             
             emptyStatePanel.style.display = 'flex';
             resultWrapper.style.display = 'none';
-
-            // 🔥 데이터 로드가 성공하면 1.5초 뒤에 1번 메뉴를 스르륵 접음
-            setTimeout(() => {
-                const content = document.getElementById('dataLoadContent');
-                const icon = document.getElementById('dataLoadToggleIcon');
-                if (content && content.style.display !== 'none' && teacherSchedules.length > 0) {
-                    content.style.display = 'none';
-                    icon.innerText = '▶';
-                }
-            }, 1500);
         }
 
         function getDayOfWeek(dateStr) {
@@ -1925,7 +1888,6 @@
             return `<span class="workload-badge ${badgeClass}" style="cursor:pointer;" onclick="event.stopPropagation(); showSchedulePopup('${teacherName}', '${dateStr}', ${swapPeriod}, '${swapSubject}')" title="당일 전체 시간표 상세보기">${icon}내 당일 ${totalClasses}시간 🔍</span>`;
         }
 
-        // 🔥 먹통 방지용 에러 추적기(try-catch)가 적용된 핵심 알고리즘
         function findReplacements() {
             try {
                 document.getElementById('validationResultBox').style.display = 'none'; 
